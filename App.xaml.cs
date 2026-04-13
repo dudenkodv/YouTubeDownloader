@@ -3,6 +3,7 @@ using Serilog;
 using Serilog.Events;
 using System.IO;
 using System.Windows;
+using YouTubeDownloader.Services;
 
 namespace YouTubeDownloader;
 
@@ -29,9 +30,7 @@ public partial class App : Application {
                 .WriteTo.File(Path.Combine(logDir, $"error_{today}.log")))
             .CreateLogger();
 
-        Log.Error("OnStartup error");
-        Log.Information("OnStartup info");
-        Log.Debug("OnStartup debug");
+        ToolsValidatorWrap.Check();
     }
 
     protected override void OnExit(ExitEventArgs e) {

@@ -2,7 +2,6 @@
 using Serilog;
 using System.Diagnostics;
 using System.IO;
-using System.Security.Policy;
 using System.Windows;
 using YouTubeDownloader.Interfaces;
 using YouTubeDownloader.Models;
@@ -14,8 +13,9 @@ public partial class MainWindow : Window {
     private readonly IYouTubeService _youtubeService;
     private List<VideoFormat> _formats = new();
     private bool _isVideoMode = true;
-    private CancellationTokenSource? _downloadCts;
+    private CancellationTokenSource? _cts;
     private string? _lastDownloadedPath;
+    private bool _isLoadingInfo = false;
 
     public MainWindow() {
         InitializeComponent();
@@ -31,22 +31,34 @@ public partial class MainWindow : Window {
             return;
         }
 
+        _cts = new CancellationTokenSource();
+        _isLoadingInfo = true;
+
         LoadButton.IsEnabled = false;
+        CancelButton.IsEnabled = true;
         ShowSpinner("Получение информации...");
 
         try {
             _formats = await _youtubeService.GetFormatsAsync(url,
-                new Progress<string>(msg => StatusText.Text = msg));
+                new Progress<string>(msg => StatusText.Text = msg),
+                _cts.Token);
 
             UpdateFormatsList();
             DownloadButton.IsEnabled = _formats.Any();
+            HideSpinner();
+        } catch (OperationCanceledException) {
+            StatusText.Text = "Отменено";
             HideSpinner();
         } catch (Exception ex) {
             HideSpinner();
             Log.Error(ex, "Ошибка загрузки информации");
             MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         } finally {
+            _isLoadingInfo = false;
             LoadButton.IsEnabled = true;
+            CancelButton.IsEnabled = false;
+            _cts?.Dispose();
+            _cts = null;
         }
     }
 
@@ -86,11 +98,12 @@ public partial class MainWindow : Window {
         if (saveDialog.ShowDialog() != true)
             return;
 
-        _downloadCts = new CancellationTokenSource();
+        _cts = new CancellationTokenSource();
 
         DownloadButton.IsEnabled = false;
         LoadButton.IsEnabled = false;
-        CancelDownloadButton.IsEnabled = true;
+        CancelButton.IsEnabled = true;
+        OpenFolderButton.IsEnabled = false;
 
         ShowSpinner("Загрузка...");
         ProgressBar.Visibility = Visibility.Visible;
@@ -113,7 +126,7 @@ public partial class MainWindow : Window {
                     }
                 }),
                 new Progress<string>(s => StatusText.Text = s),
-                _downloadCts.Token);
+                _cts.Token);
 
             _lastDownloadedPath = saveDialog.FileName;
 
@@ -131,6 +144,7 @@ public partial class MainWindow : Window {
             }
 
             StatusText.Text = "Готов";
+            OpenFolderButton.IsEnabled = true;
         } catch (OperationCanceledException) {
             HideSpinner();
             ProgressBar.Visibility = Visibility.Collapsed;
@@ -142,18 +156,18 @@ public partial class MainWindow : Window {
             MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             StatusText.Text = "Ошибка";
         } finally {
-            _downloadCts?.Dispose();
-            _downloadCts = null;
+            _cts?.Dispose();
+            _cts = null;
             DownloadButton.IsEnabled = true;
             LoadButton.IsEnabled = true;
-            CancelDownloadButton.IsEnabled = false;
+            CancelButton.IsEnabled = false;
         }
     }
 
-    private void CancelDownloadButton_Click(object sender, RoutedEventArgs e) {
-        _downloadCts?.Cancel();
+    private void CancelButton_Click(object sender, RoutedEventArgs e) {
+        _cts?.Cancel();
         _youtubeService.CancelDownload();
-        CancelDownloadButton.IsEnabled = false;
+        CancelButton.IsEnabled = false;
         StatusText.Text = "Отмена...";
     }
 
@@ -195,12 +209,20 @@ public partial class MainWindow : Window {
     }
 
     private async void CheckUpdatesButton_Click(object sender, RoutedEventArgs e) {
+        _cts = new CancellationTokenSource();
+
         CheckUpdatesButton.IsEnabled = false;
+        CancelButton.IsEnabled = true;
         StatusText.Text = "Проверка обновлений...";
 
         try {
             var updateService = new UpdateService();
             var ytUpdate = await updateService.CheckYtDlpUpdateAsync();
+
+            if (_cts.Token.IsCancellationRequested) {
+                StatusText.Text = "Отменено";
+                return;
+            }
 
             if (ytUpdate.IsUpdateAvailable) {
                 var result = MessageBox.Show(
@@ -216,19 +238,27 @@ public partial class MainWindow : Window {
                     var progress = new Progress<int>(p => StatusText.Text = $"Загрузка обновления: {p}%");
                     await updateService.DownloadAndUpdateToolAsync(ytUpdate, progress);
 
-                    MessageBox.Show("Обновление установлено! Перезапустите приложение.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (!_cts.Token.IsCancellationRequested)
+                        MessageBox.Show("Обновление установлено! Перезапустите приложение.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             } else {
-                MessageBox.Show($"Установлена последняя версия yt-dlp ({ytUpdate.CurrentVersion})", "Обновления не найдены", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (!_cts.Token.IsCancellationRequested)
+                    MessageBox.Show($"Установлена последняя версия yt-dlp ({ytUpdate.CurrentVersion})", "Обновления не найдены", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
             updateService.Dispose();
+        } catch (OperationCanceledException) {
+            StatusText.Text = "Отменено";
         } catch (Exception ex) {
             Log.Error(ex, "Ошибка проверки обновлений");
             MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         } finally {
+            _cts?.Dispose();
+            _cts = null;
             CheckUpdatesButton.IsEnabled = true;
-            StatusText.Text = "Готов";
+            CancelButton.IsEnabled = false;
+            if (!_isLoadingInfo)
+                StatusText.Text = "Готов";
         }
     }
 }

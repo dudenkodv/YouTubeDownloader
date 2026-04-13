@@ -20,7 +20,7 @@
 
         <WrapPanel Grid.Row="2" Margin="10,0,0,10">
             <Button x:Name="LoadButton" Content="Загрузить информацию" Width="150" Height="30" Click="LoadButton_Click" Margin="0,0,10,0"/>
-            <Button x:Name="CancelDownloadButton" Content="Отмена" Width="80" Height="30" Click="CancelDownloadButton_Click" IsEnabled="False" Margin="0,0,10,0"/>
+            <Button x:Name="CancelButton" Content="Отмена" Width="80" Height="30" Click="CancelButton_Click" IsEnabled="False" Margin="0,0,10,0"/>
             <Button x:Name="OpenLogsButton" Content="Логи" Width="80" Height="30" Click="OpenLogsButton_Click" Margin="0,0,10,0"/>
             <Button x:Name="OpenFolderButton" Content="Открыть папку" Width="110" Height="30" Click="OpenFolderButton_Click" IsEnabled="False" Margin="0,0,10,0"/>
             <Button x:Name="CheckUpdatesButton" Content="Проверить обновления" Width="150" Height="30" Click="CheckUpdatesButton_Click"/>

@@ -11,8 +11,9 @@ public interface IYouTubeService {
     /// </summary>
     /// <param name="url">Ссылка на YouTube видео</param>
     /// <param name="progress">Прогресс выполнения операции</param>
+    /// <param name="cancellationToken">Токен для отмены операции</param>
     /// <returns>Список форматов видео/аудио</returns>
-    Task<List<VideoFormat>> GetFormatsAsync(string url, IProgress<string>? progress = null);
+    Task<List<VideoFormat>> GetFormatsAsync(string url, IProgress<string>? progress = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Получает название видео с YouTube

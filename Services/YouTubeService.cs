@@ -11,29 +11,33 @@ using YouTubeDownloader.Models;
 namespace YouTubeDownloader.Services;
 
 public class YouTubeService : IYouTubeService {
-    private readonly string _ytDlpPath;
-    private readonly string _ffmpegPath;
-    private CancellationTokenSource? _downloadCts;
-    private string _currentTitle = string.Empty;
+    private readonly string ytDlpPath;
+    private readonly string ffmpegPath;
+    private CancellationTokenSource? downloadCts;
+    private string currentTitle = string.Empty;
 
     public YouTubeService() {
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
-        _ffmpegPath = Path.Combine(baseDir, "Tools", "ffmpeg.exe");
+        ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
+        ffmpegPath = Path.Combine(baseDir, "Tools", "ffmpeg.exe");
     }
 
-    public async Task<List<VideoFormat>> GetFormatsAsync(string url, IProgress<string>? progress = null) {
+    public async Task<List<VideoFormat>> GetFormatsAsync(string url, IProgress<string>? progress = null, CancellationToken cancellationToken = default) {
         Log.Information("GetFormatsAsync: {Url}", url);
         progress?.Report("Получение информации о видео...");
 
-        // РАБОТАЮЩИЕ аргументы
+        cancellationToken.ThrowIfCancellationRequested();
+        Log.Debug("Cancel check passed at start of GetFormatsAsync");
+
         var args = $"--impersonate chrome --force-ipv4 --geo-bypass --extractor-args \"youtube:player_client=web,android,ios\" --verbose -J --no-warnings \"{url}\"";
         Log.Debug("Arguments: {Args}", args);
 
-        var result = await Cli.Wrap(_ytDlpPath)
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        var result = await Cli.Wrap(ytDlpPath)
             .WithArguments(args)
             .WithValidation(CommandResultValidation.None)
-            .ExecuteBufferedAsync();
+            .ExecuteBufferedAsync(cts.Token);
 
         Log.Information("ExitCode: {ExitCode}", result.ExitCode);
 
@@ -45,9 +49,12 @@ public class YouTubeService : IYouTubeService {
             throw new Exception($"Ошибка yt-dlp: {result.StandardError}");
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+        Log.Debug("Cancel check after executing yt-dlp");
+
         var json = JObject.Parse(result.StandardOutput);
-        _currentTitle = json["title"]?.ToString() ?? "Unknown";
-        Log.Information("Title: {Title}", _currentTitle);
+        currentTitle = json["title"]?.ToString() ?? "Unknown";
+        Log.Information("Title: {Title}", currentTitle);
 
         var formats = new List<VideoFormat>();
         var formatsArray = json["formats"] as JArray;
@@ -59,13 +66,16 @@ public class YouTubeService : IYouTubeService {
 
         Log.Debug("Total formats: {Count}", formatsArray.Count);
 
+        int index = 0;
         foreach (var fmt in formatsArray) {
+            cancellationToken.ThrowIfCancellationRequested();
+            Log.Debug("Cancel check inside formats loop, iteration {Index}", index++);
+
             try {
                 var vcodec = fmt["vcodec"]?.ToString() ?? "";
                 var acodec = fmt["acodec"]?.ToString() ?? "";
                 var formatNote = fmt["format_note"]?.ToString() ?? "";
 
-                // Skip storyboards
                 if (formatNote == "storyboard")
                     continue;
 
@@ -90,7 +100,9 @@ public class YouTubeService : IYouTubeService {
             }
         }
 
-        // Group video formats by height
+        cancellationToken.ThrowIfCancellationRequested();
+        Log.Debug("Cancel check before grouping formats");
+
         var videoFormats = formats
             .Where(f => !f.IsAudioOnly && f.Height.HasValue && f.Height > 0)
             .GroupBy(f => f.Height.Value)
@@ -98,7 +110,6 @@ public class YouTubeService : IYouTubeService {
             .OrderBy(f => f.Height)
             .ToList();
 
-        // Take best audio formats
         var audioFormats = formats
             .Where(f => f.IsAudioOnly)
             .OrderByDescending(f => f.Tbr ?? 0)
@@ -111,19 +122,19 @@ public class YouTubeService : IYouTubeService {
 
         Log.Information("Result formats: video={Video}, audio={Audio}", videoFormats.Count, audioFormats.Count);
 
-        progress?.Report($"Готово: {_currentTitle}");
+        progress?.Report($"Готово: {currentTitle}");
         return resultFormats;
     }
 
     public Task<string?> GetVideoTitleAsync() {
-        return Task.FromResult<string?>(_currentTitle);
+        return Task.FromResult<string?>(currentTitle);
     }
 
     public async Task DownloadAsync(string url, string formatId, string outputPath, string fileName,
         IProgress<double>? progress = null,
         IProgress<string>? status = null,
         CancellationToken cancellationToken = default) {
-        _downloadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        downloadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         var tempDir = Path.Combine(Path.GetTempPath(), "YTDownloader_" + Guid.NewGuid().ToString());
         Directory.CreateDirectory(tempDir);
@@ -134,47 +145,58 @@ public class YouTubeService : IYouTubeService {
             string? downloadedFile = null;
 
             var result = await DownloadMainAsync(url, formatId, outputTemplate, progress, status);
-            if(!result)
-                result = await DownloadSimpleAsync(url, tempDir);
             if (!result) {
-                Log.Error("ошибка при скачивании");
-                return;
-            }                
+                Log.Error("ошибка при скачивании DownloadMainAsync");
+                result = await DownloadSimpleAsync(url, tempDir);
+            }else if (!result) {
+                Log.Error("ошибка при скачивании DownloadSimpleAsync");
+                throw new Exception("Файл не найден после загрузки");
+            }
 
             downloadedFile = Directory.GetFiles(tempDir).FirstOrDefault();
+            Log.Debug($"downloadedFile = {downloadedFile}");
 
             if (string.IsNullOrEmpty(downloadedFile) || !File.Exists(downloadedFile))
                 throw new Exception("Файл не найден после загрузки");
 
             await ProcessDownloadedFileAsync(downloadedFile, outputPath, fileName, progress, status);
+        } catch (OperationCanceledException) {
+            Log.Information("Download cancelled");
+            throw;
         } catch (Exception ex) {
             Log.Error(ex.Message);
         } finally {
             if (Directory.Exists(tempDir)) {
                 try { Directory.Delete(tempDir, true); } catch (Exception ex) { Log.Warning(ex, "Failed to delete temp dir"); }
             }
-            _downloadCts?.Dispose();
-            _downloadCts = null;
+            downloadCts?.Dispose();
+            downloadCts = null;
         }
     }
+
     private async Task<bool> DownloadSimpleAsync(string url, string outputPath) {
         try {
             var args = $"--verbose \"{url}\"";
-            await Cli.Wrap(_ytDlpPath)
+            await Cli.Wrap(ytDlpPath)
                 .WithArguments(args)
-                .ExecuteAsync(_downloadCts!.Token);
+                .ExecuteAsync(downloadCts!.Token);
             return true;
+        } catch (OperationCanceledException) {
+            throw;
         } catch (Exception ex) {
             Log.Error(ex.Message);
             return false;
         }
     }
+
     private async Task<bool> DownloadMainAsync(string url, string formatId, string outputTemplate, IProgress<double>? progress = null,
         IProgress<string>? status = null) {
         try {
             var args = $"-f {formatId} -o \"{outputTemplate}\" --verbose --no-warnings --newline --progress \"{url}\"";
             await ExecuteDownloadAsync(args, progress, status);
             return true;
+        } catch (OperationCanceledException) {
+            throw;
         } catch (Exception ex) {
             Log.Error(ex.Message);
             return false;
@@ -187,7 +209,7 @@ public class YouTubeService : IYouTubeService {
         var lastPercent = 0;
         string? downloadedFile = null;
 
-        var cmd = Cli.Wrap(_ytDlpPath)
+        var cmd = Cli.Wrap(ytDlpPath)
             .WithArguments(args)
             .WithStandardOutputPipe(PipeTarget.ToDelegate(line => {
                 var match = progressRegex.Match(line);
@@ -216,7 +238,7 @@ public class YouTubeService : IYouTubeService {
                 }
             }));
 
-        await cmd.ExecuteAsync(_downloadCts!.Token);
+        await cmd.ExecuteAsync(downloadCts!.Token);
         return downloadedFile;
     }
 
@@ -244,12 +266,12 @@ public class YouTubeService : IYouTubeService {
 
     public void CancelDownload() {
         Log.Information("CancelDownload called");
-        _downloadCts?.Cancel();
+        downloadCts?.Cancel();
     }
 
     private async Task ConvertToMp3Async(string inputPath, string outputPath) {
         var args = $"-i \"{inputPath}\" -c:a libmp3lame -b:a 192k \"{outputPath}\" -y";
-        var result = await Cli.Wrap(_ffmpegPath)
+        var result = await Cli.Wrap(ffmpegPath)
             .WithArguments(args)
             .WithValidation(CommandResultValidation.None)
             .ExecuteBufferedAsync();
