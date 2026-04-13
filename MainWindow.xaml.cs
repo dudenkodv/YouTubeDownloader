@@ -87,7 +87,7 @@ public partial class MainWindow : Window {
             return;
         }
 
-        var originalFileName = await _youtubeService.GetVideoTitleAsync();
+        var originalFileName = (await _youtubeService.GetVideoTitleAsync()) + $"_{selectedFormat.DisplayName}";
 
         var saveDialog = new SaveFileDialog {
             Title = "Сохранить как",
