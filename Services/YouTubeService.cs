@@ -2,8 +2,8 @@
 using CliWrap.Buffered;
 using Newtonsoft.Json.Linq;
 using Serilog;
+using System.Globalization;
 using System.IO;
-using System.Text;
 using System.Text.RegularExpressions;
 using YouTubeDownloader.Interfaces;
 using YouTubeDownloader.Models;
@@ -145,10 +145,19 @@ public class YouTubeService : IYouTubeService {
             string? downloadedFile = null;
 
             var result = await DownloadMainAsync(url, formatId, outputTemplate, progress, status);
+            if (result)
+                Log.Information("DownloadMainAsync success");
+            else
+                Log.Information("DownloadMainAsync error");
+
             if (!result) {
                 Log.Error("ошибка при скачивании DownloadMainAsync");
                 result = await DownloadSimpleAsync(url, tempDir);
-            }else if (!result) {
+                if (result)
+                    Log.Information("DownloadSimpleAsync success");
+                else
+                    Log.Information("DownloadSimpleAsync error");
+            } else if (!result) {
                 Log.Error("ошибка при скачивании DownloadSimpleAsync");
                 throw new Exception("Файл не найден после загрузки");
             }
@@ -205,41 +214,55 @@ public class YouTubeService : IYouTubeService {
 
     private async Task<string?> ExecuteDownloadAsync(string args,
         IProgress<double>? progress = null, IProgress<string>? status = null) {
-        var progressRegex = new Regex(@"(\\d+(?:\\.\\d+)?)%");
         var lastPercent = 0;
         string? downloadedFile = null;
 
         var cmd = Cli.Wrap(ytDlpPath)
             .WithArguments(args)
             .WithStandardOutputPipe(PipeTarget.ToDelegate(line => {
-                var match = progressRegex.Match(line);
-                if (match.Success && double.TryParse(match.Groups[1].Value, out var percent)) {
-                    if ((int)percent != lastPercent) {
-                        lastPercent = (int)percent;
-                        progress?.Report(percent);
-                    }
+                Log.Information("STDOUT: {Line}", line);
+
+                var percent = ParsePercent(line);
+                if (percent.HasValue && (int)percent.Value != lastPercent) {
+                    lastPercent = (int)percent.Value;
+                    progress?.Report(percent.Value);
+                    Log.Information("Progress: {Percent}%", percent.Value);
                 }
             }))
             .WithStandardErrorPipe(PipeTarget.ToDelegate(line => {
-                Log.Debug("stderr: {Line}", line);
+                Log.Information("STDERR: {Line}", line);
 
-                var match = progressRegex.Match(line);
-                if (match.Success && double.TryParse(match.Groups[1].Value, out var percent)) {
-                    if ((int)percent != lastPercent) {
-                        lastPercent = (int)percent;
-                        progress?.Report(percent);
-                    }
+                var percent = ParsePercent(line);
+                if (percent.HasValue && (int)percent.Value != lastPercent) {
+                    lastPercent = (int)percent.Value;
+                    progress?.Report(percent.Value);
+                    Log.Information("Progress: {Percent}%", percent.Value);
                 }
 
                 if (line.Contains("[download]") && line.Contains("Destination:")) {
-                    var matchPath = Regex.Match(line, @"Destination:\s*(.+)$");
-                    if (matchPath.Success)
-                        downloadedFile = matchPath.Groups[1].Value.Trim();
+                    var parts = line.Split(':', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2)
+                        downloadedFile = parts[1].Trim();
                 }
             }));
 
         await cmd.ExecuteAsync(downloadCts!.Token);
         return downloadedFile;
+    }
+
+    private double? ParsePercent(string line) {
+        if (!line.Contains("[download]") || !line.Contains('%'))
+            return null;
+
+        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts) {
+            if (part.Contains('%')) {
+                var cleaned = part.TrimEnd('%').Replace(',', '.');
+                if (double.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
+                    return result;
+            }
+        }
+        return null;
     }
 
     private async Task ProcessDownloadedFileAsync(string downloadedFile, string outputPath, string fileName,
