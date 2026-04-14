@@ -4,7 +4,7 @@ using System.IO;
 using System.Windows;
 using YouTubeDownloader.Models.Interfaces;
 
-namespace YouTubeDownloader.Models;
+namespace YouTubeDownloader.Models.ProgressTasks;
 
 public class DownloadTask : ProgressTask {
     private readonly IYouTubeService _youtubeService;

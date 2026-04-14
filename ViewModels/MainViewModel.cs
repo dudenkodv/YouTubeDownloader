@@ -7,7 +7,7 @@ using System.Windows.Input;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Services;
-using YouTubeDownloader.Models;
+using YouTubeDownloader.Models.ProgressTasks;
 
 namespace YouTubeDownloader.ViewModels;
 
@@ -18,12 +18,7 @@ public class MainViewModel : ViewModelBase {
     private VideoFormat? _selectedFormat;
     private bool _isVideoMode = true;
     private bool _isLoading;
-    private bool _isDownloading;
-    private double _progressValue;
     private string _statusText = "Готов";
-    private string _spinnerText = "Загрузка...";
-    private bool _isSpinnerVisible;
-    private bool _isProgressVisible;
     private string? _lastDownloadedPath;
     private CancellationTokenSource? _cts;
     private ObservableCollection<ProgressTask> _activeTasks = new();
@@ -31,14 +26,13 @@ public class MainViewModel : ViewModelBase {
     public MainViewModel() {
         _youtubeService = new YouTubeService();
 
-        LoadCommand = new RelayCommand(async () => await LoadAsync(), () => !IsLoading && !IsDownloading);
-        DownloadCommand = new RelayCommand(async () => await DownloadAsync(), () => SelectedFormat != null && !IsLoading && !IsDownloading);
-        AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading && !IsDownloading);
-        CancelCommand = new RelayCommand(Cancel, () => IsLoading || IsDownloading);
-        CancelTaskCommand = new RelayCommand((object? param) => CancelTask(param), (object? param) => ActiveTasks.Any(t => t.IsActive));
+        LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
+        AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading);
+        CancelCommand = new RelayCommand(Cancel, () => _activeTasks.Any(t => t.IsActive));
+        CancelTaskCommand = new RelayCommand((object? param) => CancelTask(param), (object? param) => true);
         OpenLogsCommand = new RelayCommand(OpenLogs);
         OpenFolderCommand = new RelayCommand(OpenFolder, () => !string.IsNullOrEmpty(_lastDownloadedPath));
-        CheckUpdatesCommand = new RelayCommand(async () => await CheckUpdatesAsync(), () => !IsLoading && !IsDownloading);
+        CheckUpdatesCommand = new RelayCommand(async () => await CheckUpdatesAsync(), () => !IsLoading);
     }
 
     public string Url {
@@ -71,36 +65,9 @@ public class MainViewModel : ViewModelBase {
         set { _isLoading = value; OnPropertyChanged(); }
     }
 
-    public bool IsDownloading {
-        get => _isDownloading;
-        set { _isDownloading = value; OnPropertyChanged(); }
-    }
-
-    public bool IsBusy => IsLoading || IsDownloading;
-
-    public double ProgressValue {
-        get => _progressValue;
-        set { _progressValue = value; OnPropertyChanged(); }
-    }
-
     public string StatusText {
         get => _statusText;
         set { _statusText = value; OnPropertyChanged(); }
-    }
-
-    public string SpinnerText {
-        get => _spinnerText;
-        set { _spinnerText = value; OnPropertyChanged(); }
-    }
-
-    public bool IsSpinnerVisible {
-        get => _isSpinnerVisible;
-        set { _isSpinnerVisible = value; OnPropertyChanged(); }
-    }
-
-    public bool IsProgressVisible {
-        get => _isProgressVisible;
-        set { _isProgressVisible = value; OnPropertyChanged(); }
     }
 
     public ObservableCollection<ProgressTask> ActiveTasks {
@@ -109,7 +76,6 @@ public class MainViewModel : ViewModelBase {
     }
 
     public ICommand LoadCommand { get; }
-    public ICommand DownloadCommand { get; }
     public ICommand AddToQueueCommand { get; }
     public ICommand CancelCommand { get; }
     public ICommand CancelTaskCommand { get; }
@@ -117,99 +83,26 @@ public class MainViewModel : ViewModelBase {
     public ICommand OpenFolderCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
 
-    private async Task LoadAsync() {
-        if (string.IsNullOrEmpty(Url)) {
-            StatusText = "Введите ссылку";
+    private async void LoadInfo() {
+        if (string.IsNullOrEmpty(Url))
             return;
-        }
 
-        _cts = new CancellationTokenSource();
         IsLoading = true;
-        IsSpinnerVisible = true;
-        SpinnerText = "Получение информации...";
         StatusText = "Загрузка информации...";
 
-        try {
-            var formats = await _youtubeService.GetFormatsAsync(Url,
-                new Progress<string>(msg => StatusText = msg),
-                _cts.Token);
+        var task = new LoadInfoTask(_youtubeService, Url, (formats) => {
+            Application.Current.Dispatcher.Invoke(() => {
+                Formats.Clear();
+                foreach (var format in formats)
+                    Formats.Add(format);
+                UpdateFormatsList();
+                IsLoading = false;
+                StatusText = "Готов";
+            });
+        });
 
-            Formats.Clear();
-            foreach (var format in formats)
-                Formats.Add(format);
-
-            UpdateFormatsList();
-        } catch (OperationCanceledException) {
-            StatusText = "Отменено";
-        } catch (Exception ex) {
-            Log.Error(ex, "Ошибка загрузки информации");
-            StatusText = "Ошибка";
-        } finally {
-            IsLoading = false;
-            IsSpinnerVisible = false;
-            _cts?.Dispose();
-            _cts = null;
-        }
-    }
-
-    private async Task DownloadAsync() {
-        if (SelectedFormat == null)
-            return;
-
-        var originalFileName = (await _youtubeService.GetVideoTitleAsync()) + $"_{SelectedFormat.DisplayName}";
-
-        var saveDialog = new Microsoft.Win32.SaveFileDialog {
-            Title = "Сохранить как",
-            Filter = IsVideoMode ? "MP4 файлы (*.mp4)|*.mp4" : "MP3 файлы (*.mp3)|*.mp3",
-            FileName = originalFileName
-        };
-
-        if (saveDialog.ShowDialog() != true)
-            return;
-
-        _cts = new CancellationTokenSource();
-        IsDownloading = true;
-        IsSpinnerVisible = true;
-        IsProgressVisible = true;
-        ProgressValue = 0;
-        StatusText = "Загрузка...";
-
-        try {
-            var directory = Path.GetDirectoryName(saveDialog.FileName) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
-            var fileName = Path.GetFileNameWithoutExtension(saveDialog.FileName);
-
-            await _youtubeService.DownloadAsync(
-                Url,
-                SelectedFormat.FormatId,
-                directory,
-                fileName,
-                new Progress<double>(p => { ProgressValue = p; SpinnerText = $"Загрузка: {p:F0}%"; }),
-                new Progress<string>(s => StatusText = s),
-                _cts.Token);
-
-            _lastDownloadedPath = saveDialog.FileName;
-            StatusText = "Готов";
-
-            var result = MessageBox.Show(
-                $"Загрузка завершена!\n{Path.GetFileName(saveDialog.FileName)}\n\nОткрыть папку с файлом?",
-                "Готово",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
-
-            if (result == MessageBoxResult.Yes)
-                Process.Start("explorer.exe", $"/select,\"{saveDialog.FileName}\"");
-        } catch (OperationCanceledException) {
-            StatusText = "Отменено";
-        } catch (Exception ex) {
-            Log.Error(ex, "Ошибка загрузки");
-            StatusText = "Ошибка";
-        } finally {
-            IsDownloading = false;
-            IsSpinnerVisible = false;
-            IsProgressVisible = false;
-            _cts?.Dispose();
-            _cts = null;
-        }
+        ActiveTasks.Add(task);
+        await RunTaskAsync(task);
     }
 
     private async void AddToQueue() {
@@ -255,6 +148,9 @@ public class MainViewModel : ViewModelBase {
             task.Status = $"Ошибка: {ex.Message}";
         } finally {
             task.IsActive = false;
+            if (task is DownloadTask downloadTask && downloadTask.Status == "Завершено") {
+                _lastDownloadedPath = downloadTask.OutputPath;
+            }
         }
     }
 
@@ -264,10 +160,9 @@ public class MainViewModel : ViewModelBase {
         StatusText = "Отмена...";
     }
 
-    private Task CancelTask(object? parameter) {
-        if (parameter is ProgressTask task)
+    private void CancelTask(object? parameter) {
+        if (parameter is ProgressTask task && task.IsActive)
             task.Cancel();
-        return Task.CompletedTask;
     }
 
     private void OpenLogs() {

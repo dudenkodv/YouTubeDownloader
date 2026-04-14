@@ -11,6 +11,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using YouTubeDownloader.Models;
+using YouTubeDownloader.Models.ProgressTasks;
 
 namespace YouTubeDownloader.Views
 {
