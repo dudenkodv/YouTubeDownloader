@@ -1,7 +1,8 @@
 ﻿<Window x:Class="YouTubeDownloader.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="YouTube Downloader" Height="550" Width="750"
+        xmlns:local="clr-namespace:YouTubeDownloader.Views"
+        Title="YouTube Downloader" Height="650" Width="750"
         WindowStartupLocation="CenterScreen">
 
     <Grid>
@@ -11,6 +12,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -38,9 +40,23 @@
         </StackPanel>
 
         <ListBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
-                 DisplayMemberPath="DisplayName" Grid.Row="4" Margin="10,0,10,10"/>
+                 DisplayMemberPath="DisplayName" Grid.Row="4" Height="150" Margin="10,0,10,10"/>
 
-        <Grid Grid.Row="4" Background="#80FFFFFF">
+        <!-- Активные задачи -->
+        <GroupBox Header="Активные задачи" Grid.Row="5" Margin="10,0,10,10">
+            <ScrollViewer MaxHeight="200">
+                <ItemsControl ItemsSource="{Binding ActiveTasks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <local:ProgressTaskControl Task="{Binding}" 
+                                CancelCommand="{Binding DataContext.CancelTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </GroupBox>
+
+        <Grid Grid.Row="6" Background="#80FFFFFF">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -57,7 +73,7 @@
             </StackPanel>
         </Grid>
 
-        <ProgressBar Value="{Binding ProgressValue}" Height="5" Margin="10,0,10,10" Grid.Row="5">
+        <ProgressBar Value="{Binding ProgressValue}" Height="5" Margin="10,0,10,10" Grid.Row="7">
             <ProgressBar.Style>
                 <Style TargetType="ProgressBar">
                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -70,10 +86,12 @@
             </ProgressBar.Style>
         </ProgressBar>
 
-        <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="10,10,10,10">
-            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Width="450" Margin="0,0,15,0"/>
+        <StackPanel Grid.Row="8" Orientation="Horizontal" Margin="10,10,10,10">
+            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Width="350" Margin="0,0,15,0"/>
+            <Button Content="Добавить в очередь" Width="130" Height="30" 
+                    Command="{Binding AddToQueueCommand}" Margin="0,0,10,0"/>
             <Button Content="Скачать" Width="100" Height="30" 
-                    Command="{Binding DownloadCommand}"/>
+                    Command="{Binding DownloadCommand}" Visibility="Collapsed"/>
         </StackPanel>
     </Grid>
 </Window>

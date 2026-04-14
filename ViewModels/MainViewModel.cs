@@ -7,6 +7,7 @@ using System.Windows.Input;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Services;
+using YouTubeDownloader.Models;
 
 namespace YouTubeDownloader.ViewModels;
 
@@ -25,13 +26,16 @@ public class MainViewModel : ViewModelBase {
     private bool _isProgressVisible;
     private string? _lastDownloadedPath;
     private CancellationTokenSource? _cts;
+    private ObservableCollection<ProgressTask> _activeTasks = new();
 
     public MainViewModel() {
         _youtubeService = new YouTubeService();
 
         LoadCommand = new RelayCommand(async () => await LoadAsync(), () => !IsLoading && !IsDownloading);
         DownloadCommand = new RelayCommand(async () => await DownloadAsync(), () => SelectedFormat != null && !IsLoading && !IsDownloading);
+        AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading && !IsDownloading);
         CancelCommand = new RelayCommand(Cancel, () => IsLoading || IsDownloading);
+        CancelTaskCommand = new RelayCommand((object? param) => CancelTask(param), (object? param) => ActiveTasks.Any(t => t.IsActive));
         OpenLogsCommand = new RelayCommand(OpenLogs);
         OpenFolderCommand = new RelayCommand(OpenFolder, () => !string.IsNullOrEmpty(_lastDownloadedPath));
         CheckUpdatesCommand = new RelayCommand(async () => await CheckUpdatesAsync(), () => !IsLoading && !IsDownloading);
@@ -99,9 +103,16 @@ public class MainViewModel : ViewModelBase {
         set { _isProgressVisible = value; OnPropertyChanged(); }
     }
 
+    public ObservableCollection<ProgressTask> ActiveTasks {
+        get => _activeTasks;
+        set { _activeTasks = value; OnPropertyChanged(); }
+    }
+
     public ICommand LoadCommand { get; }
     public ICommand DownloadCommand { get; }
+    public ICommand AddToQueueCommand { get; }
     public ICommand CancelCommand { get; }
+    public ICommand CancelTaskCommand { get; }
     public ICommand OpenLogsCommand { get; }
     public ICommand OpenFolderCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
@@ -201,10 +212,62 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
+    private async void AddToQueue() {
+        if (SelectedFormat == null)
+            return;
+
+        var videoTitle = await _youtubeService.GetVideoTitleAsync() ?? "video";
+        var fileName = $"{videoTitle}_{SelectedFormat.DisplayName}";
+
+        var saveDialog = new Microsoft.Win32.SaveFileDialog {
+            Title = "Сохранить как",
+            Filter = IsVideoMode ? "MP4 файлы (*.mp4)|*.mp4" : "MP3 файлы (*.mp3)|*.mp3",
+            FileName = fileName
+        };
+
+        if (saveDialog.ShowDialog() != true)
+            return;
+
+        var task = new DownloadTask(_youtubeService) {
+            Name = videoTitle,
+            Url = Url,
+            FormatId = SelectedFormat.FormatId,
+            OutputPath = saveDialog.FileName,
+            Status = "Ожидание"
+        };
+
+        ActiveTasks.Add(task);
+        _ = RunTaskAsync(task);
+    }
+
+    private async Task RunTaskAsync(ProgressTask task) {
+        using var cts = task.CreateCancellationTokenSource();
+
+        var progress = new Progress<double>(p => task.Progress = p);
+        var status = new Progress<string>(s => task.Status = s);
+
+        try {
+            await task.ExecuteAsync(progress, status, cts.Token);
+        } catch (OperationCanceledException) {
+            // статус уже установлен в task.Cancel()
+        } catch (Exception ex) {
+            Log.Error(ex, "Ошибка выполнения задачи {TaskName}", task.Name);
+            task.Status = $"Ошибка: {ex.Message}";
+        } finally {
+            task.IsActive = false;
+        }
+    }
+
     private void Cancel() {
         _cts?.Cancel();
         _youtubeService.CancelDownload();
         StatusText = "Отмена...";
+    }
+
+    private Task CancelTask(object? parameter) {
+        if (parameter is ProgressTask task)
+            task.Cancel();
+        return Task.CompletedTask;
     }
 
     private void OpenLogs() {
