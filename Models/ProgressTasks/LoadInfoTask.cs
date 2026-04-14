@@ -22,7 +22,9 @@ public class LoadInfoTask : ProgressTask {
             status?.Report("Получение информации...");
             progress?.Report(0);
 
+            Log.Information($"_youtubeService.GetFormatsAsync start {DateTime.Now}");
             var formats = await _youtubeService.GetFormatsAsync(_url, status, cancellationToken);
+            Log.Information($"_youtubeService.GetFormatsAsync end {DateTime.Now}");
 
             _onFormatsLoaded(formats);
 
