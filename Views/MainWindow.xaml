@@ -40,16 +40,35 @@
         <ListBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
                  DisplayMemberPath="DisplayName" Grid.Row="4" Margin="10,0,10,10"/>
 
-        <Grid Grid.Row="4" Background="#80FFFFFF" Visibility="{Binding IsSpinnerVisible, Converter={StaticResource BoolToVisibility}}">
+        <Grid Grid.Row="4" Background="#80FFFFFF">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSpinnerVisible}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                 <ProgressBar Width="500" Height="50" IsIndeterminate="True" />
                 <TextBlock Text="{Binding SpinnerText}" Margin="0,10,0,0" HorizontalAlignment="Center"/>
             </StackPanel>
         </Grid>
 
-        <ProgressBar Value="{Binding ProgressValue}" Height="5" Margin="10,0,10,10" 
-                     Visibility="{Binding IsProgressVisible, Converter={StaticResource BoolToVisibility}}"
-                     Grid.Row="5"/>
+        <ProgressBar Value="{Binding ProgressValue}" Height="5" Margin="10,0,10,10" Grid.Row="5">
+            <ProgressBar.Style>
+                <Style TargetType="ProgressBar">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsProgressVisible}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ProgressBar.Style>
+        </ProgressBar>
 
         <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="10,10,10,10">
             <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Width="450" Margin="0,0,15,0"/>
