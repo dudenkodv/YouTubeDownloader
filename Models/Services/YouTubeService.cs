@@ -224,6 +224,7 @@ public class YouTubeService : IYouTubeService {
         IProgress<string>? status = null) {
         try {
             var args = $"-f {formatId} -o \"{outputTemplate}\" --verbose --no-warnings --newline --progress \"{url}\"";
+            status?.Report("Скачивание видео...");
             await ExecuteDownloadAsync(args, progress, status);
             return true;
         } catch (OperationCanceledException) {
@@ -289,23 +290,23 @@ public class YouTubeService : IYouTubeService {
 
     private async Task ProcessDownloadedFileAsync(string downloadedFile, string outputPath, string fileName,
         IProgress<double>? progress = null, IProgress<string>? status = null) {
-        status?.Report("Обработка...");
-
         var extension = Path.GetExtension(downloadedFile).ToLower();
-        string finalPath;
 
         if (extension == ".m4a") {
-            finalPath = Path.Combine(outputPath, fileName + ".mp3");
+            status?.Report("Конвертация в MP3...");
+            var finalPath = Path.Combine(outputPath, fileName + ".mp3");
             await ConvertToMp3Async(downloadedFile, finalPath);
             File.Delete(downloadedFile);
+            status?.Report($"Сохранено: {Path.GetFileName(finalPath)}");
         } else {
-            finalPath = Path.Combine(outputPath, fileName + extension);
+            status?.Report("Сохранение файла...");
+            var finalPath = Path.Combine(outputPath, fileName + extension);
             if (File.Exists(finalPath))
                 File.Delete(finalPath);
             File.Move(downloadedFile, finalPath);
+            status?.Report($"Сохранено: {Path.GetFileName(finalPath)}");
         }
 
-        status?.Report($"Сохранено: {Path.GetFileName(finalPath)}");
         progress?.Report(100);
     }
 
