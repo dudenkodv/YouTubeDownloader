@@ -28,7 +28,6 @@ public class MainViewModel : ViewModelBase {
 
         LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
         AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading);
-        CancelCommand = new RelayCommand(Cancel, () => _activeTasks.Any(t => t.IsActive));
         CancelTaskCommand = new RelayCommand((object? param) => CancelTask(param), (object? param) => true);
         OpenLogsCommand = new RelayCommand(OpenLogs);
         OpenFolderCommand = new RelayCommand(OpenFolder, () => !string.IsNullOrEmpty(_lastDownloadedPath));
@@ -77,7 +76,6 @@ public class MainViewModel : ViewModelBase {
 
     public ICommand LoadCommand { get; }
     public ICommand AddToQueueCommand { get; }
-    public ICommand CancelCommand { get; }
     public ICommand CancelTaskCommand { get; }
     public ICommand OpenLogsCommand { get; }
     public ICommand OpenFolderCommand { get; }
@@ -152,12 +150,6 @@ public class MainViewModel : ViewModelBase {
                 _lastDownloadedPath = downloadTask.OutputPath;
             }
         }
-    }
-
-    private void Cancel() {
-        _cts?.Cancel();
-        _youtubeService.CancelDownload();
-        StatusText = "Отмена...";
     }
 
     private void CancelTask(object? parameter) {
