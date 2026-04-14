@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Windows;
 
-namespace YouTubeDownloader.Services {
+namespace YouTubeDownloader.Models.Services {
     internal static class ToolsValidatorWrap {
         public static void Check() {
             try {

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace YouTubeDownloader.DTOs;
+namespace YouTubeDownloader.Models.DTOs;
 
 /// <summary>
 /// DTO для ответа GitHub API о релизе yt-dlp

@@ -3,7 +3,7 @@ using Serilog;
 using Serilog.Events;
 using System.IO;
 using System.Windows;
-using YouTubeDownloader.Services;
+using YouTubeDownloader.Models.Services;
 
 namespace YouTubeDownloader;
 

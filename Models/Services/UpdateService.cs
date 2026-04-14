@@ -3,11 +3,11 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using YouTubeDownloader.DTOs;
-using YouTubeDownloader.Interfaces;
-using YouTubeDownloader.Models;
+using YouTubeDownloader.Models.DTOs;
+using YouTubeDownloader.Models.Entities;
+using YouTubeDownloader.Models.Interfaces;
 
-namespace YouTubeDownloader.Services;
+namespace YouTubeDownloader.Models.Services;
 
 public class UpdateService : IUpdateService {
     private readonly string _toolsDir;

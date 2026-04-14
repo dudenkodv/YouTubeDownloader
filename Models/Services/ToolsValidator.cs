@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using Serilog;
 
-namespace YouTubeDownloader.Services;
+namespace YouTubeDownloader.Models.Services;
 
 public static class ToolsValidator {
     private static readonly string[] RequiredTools = { "yt-dlp.exe", "ffmpeg.exe", "deno.exe" };

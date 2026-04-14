@@ -1,4 +1,4 @@
-﻿namespace YouTubeDownloader.Models;
+﻿namespace YouTubeDownloader.Models.Entities;
 
 public class UpdateInfo {
     public string ToolName { get; set; } = string.Empty;

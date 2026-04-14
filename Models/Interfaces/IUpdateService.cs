@@ -1,6 +1,6 @@
-﻿using YouTubeDownloader.Models;
+﻿using YouTubeDownloader.Models.Entities;
 
-namespace YouTubeDownloader.Interfaces;
+namespace YouTubeDownloader.Models.Interfaces;
 
 /// <summary>
 /// Сервис для проверки и установки обновлений внешних инструментов

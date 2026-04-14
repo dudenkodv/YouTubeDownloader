@@ -5,11 +5,11 @@ using Serilog;
 using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
-using YouTubeDownloader.Extensions;
-using YouTubeDownloader.Interfaces;
-using YouTubeDownloader.Models;
+using YouTubeDownloader.Models.Entities;
+using YouTubeDownloader.Models.Extensions;
+using YouTubeDownloader.Models.Interfaces;
 
-namespace YouTubeDownloader.Services;
+namespace YouTubeDownloader.Models.Services;
 
 public class YouTubeService : IYouTubeService {
     private readonly string ytDlpPath;

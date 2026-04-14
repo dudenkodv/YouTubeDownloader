@@ -1,6 +1,6 @@
-﻿using YouTubeDownloader.Models;
+﻿using YouTubeDownloader.Models.Entities;
 
-namespace YouTubeDownloader.Extensions; 
+namespace YouTubeDownloader.Models.Extensions; 
 public static class VideoFormatExtensions {
     public static List<VideoFormat> GetVideoOnlyFormats(this List<VideoFormat> formats) {
         return formats

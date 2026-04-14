@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace YouTubeDownloader.Models;
+namespace YouTubeDownloader.Models.Entities;
 
 public class VideoFormat {
     [JsonProperty("format_id")]

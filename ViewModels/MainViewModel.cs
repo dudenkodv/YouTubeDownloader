@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
-using YouTubeDownloader.Interfaces;
-using YouTubeDownloader.Models;
-using YouTubeDownloader.Services;
+using YouTubeDownloader.Models.Entities;
+using YouTubeDownloader.Models.Interfaces;
+using YouTubeDownloader.Models.Services;
 
 namespace YouTubeDownloader.ViewModels;
 
