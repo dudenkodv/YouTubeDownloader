@@ -49,92 +49,57 @@ public class YouTubeService : IYouTubeService {
             var json = JObject.Parse(result.StandardOutput);
             _currentTitle = json["title"]?.ToString() ?? "Unknown";
 
-            var formats = new List<VideoFormat>();
             var formatsArray = json["formats"] as JArray;
-
             if (formatsArray == null) {
                 return new ResultDto<List<VideoFormat>>(true, "Форматы не найдены", new List<VideoFormat>());
             }
 
-            foreach (var fmt in formatsArray) {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                try {
-                    var vcodec = fmt["vcodec"]?.ToString() ?? "";
-                    var acodec = fmt["acodec"]?.ToString() ?? "";
-                    var formatNote = fmt["format_note"]?.ToString() ?? "";
-                    var formatId = fmt["format_id"]?.ToString() ?? "";
-                    var height = fmt["height"]?.Type != JTokenType.Null ? fmt["height"]?.Value<int?>() : null;
-                    var fps = fmt["fps"]?.Type != JTokenType.Null ? fmt["fps"]?.Value<double?>() : null;
-                    var tbr = fmt["tbr"]?.Type != JTokenType.Null ? fmt["tbr"]?.Value<int?>() : null;
-                    var filesize = fmt["filesize"]?.Type != JTokenType.Null ? fmt["filesize"]?.Value<long?>() : null;
-                    var resolution = fmt["resolution"]?.ToString() ?? "";
-                    var ext = fmt["ext"]?.ToString() ?? "";
-
-                    if (formatNote == "storyboard")
-                        continue;
-
-                    if (vcodec == "none" && acodec == "none")
-                        continue;
-
-                    var format = new VideoFormat {
-                        FormatId = formatId,
-                        Extension = ext,
-                        Resolution = resolution == "audio only" ? (height?.ToString() ?? "") : resolution,
-                        FormatNote = formatNote,
-                        Filesize = filesize,
-                        Tbr = tbr,
-                        Vcodec = vcodec,
-                        Acodec = acodec,
-                        Height = height,
-                        Fps = fps,
-                        IsAudioOnly = vcodec == "none"
-                    };
-
-                    if (!string.IsNullOrEmpty(format.FormatId))
-                        formats.Add(format);
-                } catch (Exception ex) {
-                    Log.Error(ex, "Parse error");
-                }
-            }
+            var formats = formatsArray
+                .Select(fmt => fmt.ToVideoFormat())
+                .Where(f => f != null && !string.IsNullOrEmpty(f.FormatId))
+                .Cast<VideoFormat>()
+                .ToList();
 
             var videoFormats = formats.GetVideoOnlyFormats();
             var audioFormats = formats.GetAudioFormats();
 
-            var combinedFormats = new List<VideoFormat>();
-            foreach (var video in videoFormats) {
-                var bestAudio = audioFormats.FirstOrDefault();
-                if (bestAudio != null) {
-                    combinedFormats.Add(new VideoFormat {
-                        FormatId = $"{video.FormatId}+{bestAudio.FormatId}",
-                        Extension = "mp4",
-                        Resolution = video.Resolution,
-                        Height = video.Height,
-                        FormatNote = $"{video.FormatNote}+{bestAudio.FormatNote}",
-                        IsAudioOnly = false,
-                        Vcodec = video.Vcodec,
-                        Acodec = bestAudio.Acodec,
-                        Tbr = (video.Tbr ?? 0) + (bestAudio.Tbr ?? 0),
-                        Filesize = (video.Filesize ?? 0) + (bestAudio.Filesize ?? 0)
-                    });
-                }
-            }
+            var combinedFormats = videoFormats
+                .Select(video => new {
+                    Video = video,
+                    BestAudio = audioFormats.FirstOrDefault()
+                })
+                .Where(x => x.BestAudio != null)
+                .Select(x => new VideoFormat {
+                    FormatId = $"{x.Video.FormatId}+{x.BestAudio!.FormatId}",
+                    Extension = "mp4",
+                    Resolution = x.Video.Resolution,
+                    Height = x.Video.Height,
+                    FormatNote = $"{x.Video.FormatNote}+{x.BestAudio.FormatNote}",
+                    IsAudioOnly = false,
+                    Vcodec = x.Video.Vcodec,
+                    Acodec = x.BestAudio.Acodec,
+                    Tbr = (x.Video.Tbr ?? 0) + (x.BestAudio.Tbr ?? 0),
+                    Filesize = (x.Video.Filesize ?? 0) + (x.BestAudio.Filesize ?? 0)
+                })
+                .ToList();
 
             var fullFormats = formats
                 .Where(f => !f.IsAudioOnly && f.Acodec != "none")
                 .ToList();
 
-            var resultFormats = new List<VideoFormat>();
-            resultFormats.AddRange(combinedFormats);
-            resultFormats.AddRange(fullFormats);
-            resultFormats.AddRange(audioFormats);
+            var resultFormats = combinedFormats
+                .Concat(fullFormats)
+                .Concat(audioFormats)
+                .ToList();
 
-            var finalFormats = resultFormats.DistinctBy(i => i.DisplayName).OrderBy(i => i.DisplayName).ToList();
+            var finalFormats = resultFormats
+                .DistinctBy(i => i.DisplayName)
+                .OrderBy(i => i.DisplayName)
+                .ToList();
 
             progress?.Report($"Готово: {_currentTitle}");
             return new ResultDto<List<VideoFormat>>(true, "Успешно", finalFormats);
         } catch (OperationCanceledException) {
-            Log.Information("GetFormatsAsync cancelled");
             return new ResultDto<List<VideoFormat>>(false, "Операция отменена", null!);
         } catch (Exception ex) {
             Log.Error(ex, "GetFormatsAsync error");
