@@ -39,13 +39,7 @@ public class YouTubeService : IYouTubeService {
                 .Url(url)
                 .Build();
 
-            Log.Debug("Arguments: {Args}", args);
-
             var result = await _executor.ExecuteAsync(_ytDlpPath, args, cancellationToken);
-
-            if (!string.IsNullOrEmpty(result.StandardError))
-                Log.Debug("STDERR: {Error}", result.StandardError);
-
             if (result.ExitCode != 0) {
                 var errorMsg = $"Ошибка yt-dlp: {result.StandardError}";
                 Log.Error(errorMsg);
@@ -54,17 +48,13 @@ public class YouTubeService : IYouTubeService {
 
             var json = JObject.Parse(result.StandardOutput);
             _currentTitle = json["title"]?.ToString() ?? "Unknown";
-            Log.Information("Title: {Title}", _currentTitle);
 
             var formats = new List<VideoFormat>();
             var formatsArray = json["formats"] as JArray;
 
             if (formatsArray == null) {
-                Log.Warning("No formats found");
                 return new ResultDto<List<VideoFormat>>(true, "Форматы не найдены", new List<VideoFormat>());
             }
-
-            Log.Debug("Total formats: {Count}", formatsArray.Count);
 
             foreach (var fmt in formatsArray) {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -139,9 +129,6 @@ public class YouTubeService : IYouTubeService {
             resultFormats.AddRange(fullFormats);
             resultFormats.AddRange(audioFormats);
 
-            Log.Information("Result formats: combined={Combined}, full={Full}, audio={Audio}",
-                combinedFormats.Count, fullFormats.Count, audioFormats.Count);
-
             var finalFormats = resultFormats.DistinctBy(i => i.DisplayName).OrderBy(i => i.DisplayName).ToList();
 
             progress?.Report($"Готово: {_currentTitle}");
@@ -167,7 +154,6 @@ public class YouTubeService : IYouTubeService {
             var result = await DownloadMainAsync(url, formatId, outputTemplate, progress, status);
 
             if (!result) {
-                Log.Warning("DownloadMainAsync failed, trying DownloadSimpleAsync");
                 result = await DownloadSimpleAsync(url);
 
                 if (!result) {
@@ -176,7 +162,6 @@ public class YouTubeService : IYouTubeService {
             }
 
             var downloadedFile = _tempManager.GetFirstFile();
-            Log.Debug($"downloadedFile = {downloadedFile}");
 
             if (string.IsNullOrEmpty(downloadedFile) || !File.Exists(downloadedFile)) {
                 return new ResultDto<bool>(false, "Файл не найден после загрузки", false);
@@ -214,22 +199,17 @@ public class YouTubeService : IYouTubeService {
 
             await _executor.ExecuteStreamingAsync(_ytDlpPath, args,
                 onStdOut: line => {
-                    Log.Information("STDOUT: {Line}", line);
                     var percent = _parser.ParsePercent(line);
                     if (percent.HasValue && (int)percent.Value != lastPercent) {
                         lastPercent = (int)percent.Value;
                         progress?.Report(percent.Value);
-                        Log.Information("Progress: {Percent}%", percent.Value);
                     }
                 },
                 onStdErr: line => {
-                    Log.Information("STDERR: {Line}", line);
-
                     var percent = _parser.ParsePercent(line);
                     if (percent.HasValue && (int)percent.Value != lastPercent) {
                         lastPercent = (int)percent.Value;
                         progress?.Report(percent.Value);
-                        Log.Information("Progress: {Percent}%", percent.Value);
                     }
 
                     var dest = _parser.ParseDestination(line);
