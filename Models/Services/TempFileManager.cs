@@ -1,9 +1,10 @@
 ﻿using Serilog;
 using System.IO;
+using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.Services;
 
-public class TempFileManager : IDisposable {
+public class TempFileManager : ITempFileManager {
     private readonly string _tempDirectory;
     private bool _disposed;
 

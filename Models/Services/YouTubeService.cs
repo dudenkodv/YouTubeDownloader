@@ -1,30 +1,53 @@
-﻿using System.Globalization;
-using System.IO;
+﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Serilog;
+using System.Globalization;
+using System.IO;
 using YouTubeDownloader.Models.DTOs;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Extensions;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Services.Arguments;
+using YouTubeDownloader.Models.Settings;
 
 namespace YouTubeDownloader.Models.Services;
 
 public class YouTubeService : IYouTubeService {
     private readonly string _ytDlpPath;
-    private readonly ProcessExecutor _executor;
-    private readonly YtDlpOutputParser _parser;
-    private readonly FfmpegConverter _converter;
-    private readonly TempFileManager _tempManager;
+    private readonly IProcessExecutor _executor;
+    private readonly IYtDlpOutputParser _parser;
+    private readonly IFfmpegConverter _converter;
+    private readonly ITempFileManagerFactory _tempFileManagerFactory;
+    private readonly ILogger<YouTubeService> _logger;
     private string _currentTitle = string.Empty;
 
+    //public YouTubeService(
+    //    IProcessExecutor executor,
+    //    IYtDlpOutputParser parser,
+    //    IFfmpegConverter converter,
+    //    ITempFileManagerFactory tempFileManagerFactory,
+    //    ILogger<YouTubeService> logger) {
+    //    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+    //    _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
+    //    _executor = executor;
+    //    _parser = parser;
+    //    _converter = converter;
+    //    _tempFileManagerFactory = tempFileManagerFactory;
+    //    _logger = logger;
+    //}
+    //переделать на DI
     public YouTubeService() {
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
+
         _executor = new ProcessExecutor();
         _parser = new YtDlpOutputParser();
+        _tempFileManagerFactory = new TempFileManagerFactory();
+
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(Log.Logger, dispose: true));
+        _logger = loggerFactory.CreateLogger<YouTubeService>();
+
         _converter = new FfmpegConverter(_executor);
-        _tempManager = new TempFileManager();
     }
 
     public async Task<ResultDto<List<VideoFormat>>> GetFormatsAsync(string url, IProgress<string>? progress = null, CancellationToken cancellationToken = default) {
@@ -113,8 +136,9 @@ public class YouTubeService : IYouTubeService {
         IProgress<double>? progress = null,
         IProgress<string>? status = null,
         CancellationToken cancellationToken = default) {
+        using var tempManager = _tempFileManagerFactory.Create();
         try {
-            var outputTemplate = _tempManager.GetOutputTemplate(fileName);
+            var outputTemplate = tempManager.GetOutputTemplate(fileName);
 
             var result = await DownloadMainAsync(url, formatId, outputTemplate, progress, status);
 
@@ -126,7 +150,7 @@ public class YouTubeService : IYouTubeService {
                 }
             }
 
-            var downloadedFile = _tempManager.GetFirstFile();
+            var downloadedFile = tempManager.GetFirstFile();
 
             if (string.IsNullOrEmpty(downloadedFile) || !File.Exists(downloadedFile)) {
                 return new ResultDto<bool>(false, "Файл не найден после загрузки", false);

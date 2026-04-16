@@ -1,9 +1,10 @@
 ﻿using CliWrap;
 using CliWrap.Buffered;
+using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.Services;
 
-public class ProcessExecutor {
+public class ProcessExecutor : IProcessExecutor {
     private CancellationTokenSource? _currentCts;
 
     public async Task<BufferedCommandResult> ExecuteAsync(string executable, string args, CancellationToken cancellationToken = default) {

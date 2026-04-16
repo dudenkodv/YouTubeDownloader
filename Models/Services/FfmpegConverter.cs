@@ -1,13 +1,14 @@
 ﻿using Serilog;
 using System.IO;
+using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.Services;
 
-public class FfmpegConverter {
+public class FfmpegConverter : IFfmpegConverter {
     private readonly string _ffmpegPath;
-    private readonly ProcessExecutor _executor;
+    private readonly IProcessExecutor _executor;
 
-    public FfmpegConverter(ProcessExecutor executor) {
+    public FfmpegConverter(IProcessExecutor executor) {
         _executor = executor;
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         _ffmpegPath = Path.Combine(baseDir, "Tools", "ffmpeg.exe");
