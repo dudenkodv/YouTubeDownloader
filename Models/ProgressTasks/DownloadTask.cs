@@ -23,14 +23,11 @@ public class DownloadTask : ProgressTask {
             var directory = Path.GetDirectoryName(OutputPath) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
             var fileName = Path.GetFileNameWithoutExtension(OutputPath);
 
-            await _youtubeService.DownloadAsync(
-                Url,
-                FormatId,
-                directory,
-                fileName,
-                progress,
-                status,
-                cancellationToken);
+            var result = await _youtubeService.DownloadAsync(Url, FormatId, directory, fileName, progress, status, cancellationToken);
+            if (!result.isSuccess) {
+                Status = result.message;
+                return;
+            }
 
             Status = "Завершено";
             Progress = 100;

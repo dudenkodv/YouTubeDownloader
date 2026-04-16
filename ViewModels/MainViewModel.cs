@@ -107,7 +107,7 @@ public class MainViewModel : ViewModelBase {
         if (SelectedFormat == null)
             return;
 
-        var videoTitle = await _youtubeService.GetVideoTitleAsync() ?? "video";
+        var videoTitle = _youtubeService.GetVideoTitle() ?? "video";
         var fileName = $"{videoTitle}_{SelectedFormat.DisplayName}";
 
         var saveDialog = new Microsoft.Win32.SaveFileDialog {
@@ -178,18 +178,29 @@ public class MainViewModel : ViewModelBase {
         StatusText = "Проверка обновлений...";
 
         try {
-            var ytUpdate = await updateService.CheckYtDlpUpdateAsync();
+            var result = await updateService.CheckYtDlpUpdateAsync();
+            if (!result.isSuccess) {
+                MessageBox.Show($"Ошибка: {result.message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var ytUpdate = result.data;
             if (ytUpdate.IsUpdateAvailable) {
-                var result = MessageBox.Show(
+                var dialogResult = MessageBox.Show(
                     $"Доступно обновление yt-dlp!\n\nТекущая: {ytUpdate.CurrentVersion}\nНовая: {ytUpdate.LatestVersion}\n\nОбновить?",
                     "Обновление",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
 
-                if (result == MessageBoxResult.Yes) {
+                if (dialogResult == MessageBoxResult.Yes) {
                     var progress = new Progress<int>(p => StatusText = $"Загрузка обновления: {p}%");
-                    await updateService.DownloadAndUpdateToolAsync(ytUpdate, progress);
-                    MessageBox.Show("Обновление установлено! Перезапустите приложение.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+                    var downloadResult = await updateService.DownloadAndUpdateToolAsync(ytUpdate, progress);
+
+                    if (downloadResult.isSuccess) {
+                        MessageBox.Show("Обновление установлено! Перезапустите приложение.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+                    } else {
+                        MessageBox.Show($"Ошибка обновления: {downloadResult.message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
             } else {
                 MessageBox.Show($"Установлена последняя версия yt-dlp ({ytUpdate.CurrentVersion})", "Обновлений нет", MessageBoxButton.OK, MessageBoxImage.Information);
