@@ -35,7 +35,11 @@ public class MainViewModel : ViewModelBase {
 
         LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
         AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading);
-        CancelTaskCommand = new RelayCommand((object? param) => CancelTask(param), (object? param) => true);
+        CancelTaskCommand = new RelayCommand((object? param) =>
+        {
+            _logger.LogInformation("CancelTaskCommand вызван. Parameter: {Parameter}", param);
+            CancelTask(param);
+        }, (object? param) => true);
         OpenLogsCommand = new RelayCommand(OpenLogs);
         OpenFolderCommand = new RelayCommand(OpenFolder, () => !string.IsNullOrEmpty(_lastDownloadedPath));
         CheckUpdatesCommand = new RelayCommand(async () => await CheckUpdatesAsync(), () => !IsLoading);
@@ -162,6 +166,10 @@ public class MainViewModel : ViewModelBase {
             task.IsActive = false;
             if (task is DownloadTask downloadTask && downloadTask.Status == "Завершено") {
                 _lastDownloadedPath = downloadTask.OutputPath;
+            }
+            if (task is LoadInfoTask) {
+                IsLoading = false;
+                StatusText = "Готов";
             }
         }
     }
