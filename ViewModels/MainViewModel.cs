@@ -24,9 +24,11 @@ public class MainViewModel : ViewModelBase {
     private ObservableCollection<ProgressTask> _activeTasks = new();
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<MainViewModel> _logger;
+    private readonly IProgressTaskFactory _taskFactory;
 
     public MainViewModel(IYouTubeService youtubeService,
-        ILoggerFactory loggerFactory) {
+        ILoggerFactory loggerFactory,
+        IProgressTaskFactory taskFactory) {
         _youtubeService = youtubeService;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<MainViewModel>();
@@ -37,6 +39,7 @@ public class MainViewModel : ViewModelBase {
         OpenLogsCommand = new RelayCommand(OpenLogs);
         OpenFolderCommand = new RelayCommand(OpenFolder, () => !string.IsNullOrEmpty(_lastDownloadedPath));
         CheckUpdatesCommand = new RelayCommand(async () => await CheckUpdatesAsync(), () => !IsLoading);
+        _taskFactory = taskFactory;
     }
 
     public string Url {
@@ -93,15 +96,21 @@ public class MainViewModel : ViewModelBase {
         IsLoading = true;
         StatusText = "Загрузка информации...";
 
-        var task = new LoadInfoTask(_youtubeService, _loggerFactory.CreateLogger<LoadInfoTask>(), Url, (formats) => {
-            Application.Current.Dispatcher.Invoke(() => {
-                Formats.Clear();
-                foreach (var format in formats)
-                    Formats.Add(format);
-                UpdateFormatsList();
-                IsLoading = false;
-                StatusText = "Готов";
-            });
+        var task = _taskFactory.Create(new TaskParameters {
+            Type = TaskType.LoadInfo,
+            Url = Url,
+            OnFormatsLoaded = (formats) =>
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    Formats.Clear();
+                    foreach (var format in formats)
+                        Formats.Add(format);
+                    UpdateFormatsList();
+                    IsLoading = false;
+                    StatusText = "Готов";
+                });
+            }
         });
 
         ActiveTasks.Add(task);
@@ -124,13 +133,13 @@ public class MainViewModel : ViewModelBase {
         if (saveDialog.ShowDialog() != true)
             return;
 
-        var task = new DownloadTask(_youtubeService, _loggerFactory.CreateLogger<DownloadTask>()) {
-            Name = videoTitle,
+        var task = _taskFactory.Create(new TaskParameters {
+            Type = TaskType.Download,
             Url = Url,
             FormatId = SelectedFormat.FormatId,
             OutputPath = saveDialog.FileName,
-            Status = "Ожидание"
-        };
+            Name = videoTitle
+        });
 
         ActiveTasks.Add(task);
         _ = RunTaskAsync(task);

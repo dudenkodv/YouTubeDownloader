@@ -3,7 +3,9 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using System.IO;
 using YouTubeDownloader.Models.Interfaces;
+using YouTubeDownloader.Models.ProgressTasks;
 using YouTubeDownloader.Models.Services;
+using YouTubeDownloader.Models.Services.Strategies;
 using YouTubeDownloader.Models.Settings;
 using YouTubeDownloader.ViewModels;
 using YouTubeDownloader.Views;
@@ -41,6 +43,14 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton<IYtDlpOutputParser, YtDlpOutputParser>();
         services.AddSingleton<ITempFileManagerFactory, TempFileManagerFactory>();
         services.AddSingleton<IFfmpegConverter, FfmpegConverter>();
+
+        // Фабрика задач
+        services.AddSingleton<IProgressTaskFactory, ProgressTaskFactory>();
+
+        // Стратегии скачивания
+        services.AddSingleton<FormatDownloadStrategy>();
+        services.AddSingleton<SimpleDownloadStrategy>();
+        services.AddSingleton<IDownloadStrategyFactory, DownloadStrategyFactory>();
 
         // YouTubeService
         services.AddTransient<IYouTubeService, YouTubeService>();
