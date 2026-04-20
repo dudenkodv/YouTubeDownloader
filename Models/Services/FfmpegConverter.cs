@@ -1,4 +1,6 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Core;
 using System.IO;
 using YouTubeDownloader.Models.Interfaces;
 
@@ -7,8 +9,9 @@ namespace YouTubeDownloader.Models.Services;
 public class FfmpegConverter : IFfmpegConverter {
     private readonly string _ffmpegPath;
     private readonly IProcessExecutor _executor;
+    private readonly ILogger<FfmpegConverter> _logger;
 
-    public FfmpegConverter(IProcessExecutor executor) {
+    public FfmpegConverter(IProcessExecutor executor, ILogger<FfmpegConverter> logger) {
         _executor = executor;
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         _ffmpegPath = Path.Combine(baseDir, "Tools", "ffmpeg.exe");
@@ -23,6 +26,6 @@ public class FfmpegConverter : IFfmpegConverter {
             throw new Exception($"Ошибка FFmpeg: {result.StandardError}");
         }
 
-        Log.Information("Conversion complete: {Output}", outputPath);
+        _logger.LogInformation("Conversion complete: {Output}", outputPath);
     }
 }

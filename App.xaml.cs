@@ -1,13 +1,16 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 using System.IO;
 using System.Windows;
+using YouTubeDownloader.Models.Extensions;
 using YouTubeDownloader.Models.Services;
 
 namespace YouTubeDownloader;
 
 public partial class App : Application {
+    private ServiceProvider? _serviceProvider;
     protected override void OnStartup(StartupEventArgs e) {
         base.OnStartup(e);
 
@@ -31,6 +34,14 @@ public partial class App : Application {
             .CreateLogger();
 
         ToolsValidatorWrap.Check();
+
+        var services = new ServiceCollection();
+        services.AddYouTubeServices();
+
+        _serviceProvider = services.BuildServiceProvider();
+
+        var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+        mainWindow.Show();
     }
 
     protected override void OnExit(ExitEventArgs e) {

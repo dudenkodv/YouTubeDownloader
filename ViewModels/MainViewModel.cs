@@ -23,8 +23,9 @@ public class MainViewModel : ViewModelBase {
     private CancellationTokenSource? _cts;
     private ObservableCollection<ProgressTask> _activeTasks = new();
 
-    public MainViewModel() {
-        _youtubeService = new YouTubeService();
+    public MainViewModel(IYouTubeService youtubeService) {
+        //_youtubeService = new YouTubeService();
+        _youtubeService = youtubeService;
 
         LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
         AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading);

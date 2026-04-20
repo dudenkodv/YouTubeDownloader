@@ -36,18 +36,30 @@ public class YouTubeService : IYouTubeService {
     //    _logger = logger;
     //}
     //переделать на DI
-    public YouTubeService() {
+    //public YouTubeService() {
+    //    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+    //    _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
+
+    //    _executor = new ProcessExecutor();
+    //    _parser = new YtDlpOutputParser();
+    //    _tempFileManagerFactory = new TempFileManagerFactory();
+
+    //    var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(Log.Logger, dispose: true));
+    //    _logger = loggerFactory.CreateLogger<YouTubeService>();
+    //    _converter = new FfmpegConverter(_executor, _logger);
+    //}
+    public YouTubeService(IProcessExecutor executor,
+    IYtDlpOutputParser parser,
+    IFfmpegConverter converter,
+    ITempFileManagerFactory tempFileManagerFactory,
+    ILogger<YouTubeService> logger) {
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
-
-        _executor = new ProcessExecutor();
-        _parser = new YtDlpOutputParser();
-        _tempFileManagerFactory = new TempFileManagerFactory();
-
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(Log.Logger, dispose: true));
-        _logger = loggerFactory.CreateLogger<YouTubeService>();
-
-        _converter = new FfmpegConverter(_executor);
+        _executor = executor;
+        _parser = parser;
+        _converter = converter;
+        _tempFileManagerFactory = tempFileManagerFactory;
+        _logger = logger;
     }
 
     public async Task<ResultDto<List<VideoFormat>>> GetFormatsAsync(string url, IProgress<string>? progress = null, CancellationToken cancellationToken = default) {

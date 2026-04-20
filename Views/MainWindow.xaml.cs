@@ -4,8 +4,12 @@ using YouTubeDownloader.ViewModels;
 namespace YouTubeDownloader;
 
 public partial class MainWindow : Window {
-    public MainWindow() {
+    //public MainWindow() {
+    //    InitializeComponent();
+    //    DataContext = new MainViewModel();
+    //}
+    public MainWindow(MainViewModel viewModel) {
         InitializeComponent();
-        DataContext = new MainViewModel();
+        DataContext = viewModel;
     }
 }

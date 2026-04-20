@@ -17,10 +17,10 @@ public class SimpleDownloadStrategy : IDownloadStrategy {
 
     public SimpleDownloadStrategy(
         IProcessExecutor executor,
-        IYtDlpOutputParser parser) {
+        IYtDlpOutputParser parser, ILogger<SimpleDownloadStrategy> logger) {
         _executor = executor;
         _parser = parser;
-        //_logger = logger;
+        _logger = logger;
     }
 
     public async Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
