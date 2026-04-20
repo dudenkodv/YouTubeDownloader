@@ -30,4 +30,11 @@
 	<ItemGroup>
 	  <Folder Include="Tools\" />
 	</ItemGroup>
+	<!-- Копирование Zapret в выходную папку -->
+	<ItemGroup>
+		<Content Include="Tools\zapret-discord-youtube-1.9.7b\**\*">
+			<Link>Tools\zapret\%(RecursiveDir)%(Filename)%(Extension)</Link>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 </Project>

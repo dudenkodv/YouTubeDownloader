@@ -370,6 +370,7 @@ Tools/*.webm
 Tools/*.m4a
 Tools/*.mp3
 Tools/*.mkv
+Tools/*
 
 # Binaries
 bin/

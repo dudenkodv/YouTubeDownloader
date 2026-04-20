@@ -34,6 +34,7 @@ public partial class App : Application {
             .CreateLogger();
 
         ToolsValidatorWrap.Check();
+        ZapretService.Start();
 
         var services = new ServiceCollection();
         services.AddYouTubeServices();
@@ -45,6 +46,7 @@ public partial class App : Application {
     }
 
     protected override void OnExit(ExitEventArgs e) {
+        ZapretService.Stop();
         Log.CloseAndFlush();
         base.OnExit(e);
     }
