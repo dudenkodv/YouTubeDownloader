@@ -1,5 +1,5 @@
-﻿using System.IO;
-using Serilog;
+﻿using Serilog;
+using System.IO;
 
 namespace YouTubeDownloader.Models.Services;
 

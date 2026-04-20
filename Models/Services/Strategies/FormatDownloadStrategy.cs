@@ -14,7 +14,8 @@ public class FormatDownloadStrategy : IDownloadStrategy {
 
     public FormatDownloadStrategy(
         IProcessExecutor executor,
-        IYtDlpOutputParser parser, ILogger<FormatDownloadStrategy> logger) {
+        IYtDlpOutputParser parser, 
+        ILogger<FormatDownloadStrategy> logger) {
         _executor = executor;
         _parser = parser;
         _logger = logger;

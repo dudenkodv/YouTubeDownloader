@@ -1,6 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Serilog;
-using Serilog.Core;
 using System.IO;
 using YouTubeDownloader.Models.Interfaces;
 
@@ -22,7 +20,7 @@ public class FfmpegConverter : IFfmpegConverter {
         var result = await _executor.ExecuteAsync(_ffmpegPath, args);
 
         if (result.ExitCode != 0) {
-            Log.Error("FFmpeg error: {Error}", result.StandardError);
+            _logger.LogError("FFmpeg error: {Error}", result.StandardError);
             throw new Exception($"Ошибка FFmpeg: {result.StandardError}");
         }
 

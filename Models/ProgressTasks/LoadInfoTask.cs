@@ -1,5 +1,4 @@
-﻿using Serilog;
-using System.Xml.Linq;
+﻿using Microsoft.Extensions.Logging;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Interfaces;
 
@@ -9,12 +8,14 @@ public class LoadInfoTask : ProgressTask {
     private readonly IYouTubeService _youtubeService;
     private readonly string _url;
     private readonly Action<List<VideoFormat>> _onFormatsLoaded;
+    private readonly ILogger<LoadInfoTask> _logger;
 
-    public LoadInfoTask(IYouTubeService youtubeService, string url, Action<List<VideoFormat>> onFormatsLoaded) {
+    public LoadInfoTask(IYouTubeService youtubeService, ILogger<LoadInfoTask> logger, string url, Action<List<VideoFormat>> onFormatsLoaded) {
         _youtubeService = youtubeService;
         _url = url;
         _onFormatsLoaded = onFormatsLoaded;
         Name = "Загрузка информации о видео";
+        _logger = logger;
     }
 
     public override async Task ExecuteAsync(IProgress<double> progress, IProgress<string> status, CancellationToken cancellationToken) {
@@ -37,7 +38,7 @@ public class LoadInfoTask : ProgressTask {
             Status = "Отменено";
             throw;
         } catch (Exception ex) {
-            Log.Error(ex, "Ошибка загрузки информации");
+            _logger.LogError(ex, "Ошибка загрузки информации");
             Status = $"Ошибка: {ex.Message}";
             throw;
         }

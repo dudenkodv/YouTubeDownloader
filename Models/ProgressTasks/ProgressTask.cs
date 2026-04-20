@@ -1,9 +1,10 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.ProgressTasks;
 
-public abstract class ProgressTask : INotifyPropertyChanged {
+public abstract class ProgressTask : IProgressTask, INotifyPropertyChanged {
     private string _id = string.Empty;
     private string _name = string.Empty;
     private string _status = "Ожидание";

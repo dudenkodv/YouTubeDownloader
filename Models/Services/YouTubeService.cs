@@ -1,14 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using Serilog;
-using System.Globalization;
 using System.IO;
 using YouTubeDownloader.Models.DTOs;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Extensions;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Services.Arguments;
-using YouTubeDownloader.Models.Settings;
 
 namespace YouTubeDownloader.Models.Services;
 
@@ -20,34 +17,6 @@ public class YouTubeService : IYouTubeService {
     private readonly ITempFileManagerFactory _tempFileManagerFactory;
     private readonly ILogger<YouTubeService> _logger;
     private string _currentTitle = string.Empty;
-
-    //public YouTubeService(
-    //    IProcessExecutor executor,
-    //    IYtDlpOutputParser parser,
-    //    IFfmpegConverter converter,
-    //    ITempFileManagerFactory tempFileManagerFactory,
-    //    ILogger<YouTubeService> logger) {
-    //    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-    //    _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
-    //    _executor = executor;
-    //    _parser = parser;
-    //    _converter = converter;
-    //    _tempFileManagerFactory = tempFileManagerFactory;
-    //    _logger = logger;
-    //}
-    //переделать на DI
-    //public YouTubeService() {
-    //    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-    //    _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
-
-    //    _executor = new ProcessExecutor();
-    //    _parser = new YtDlpOutputParser();
-    //    _tempFileManagerFactory = new TempFileManagerFactory();
-
-    //    var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(Log.Logger, dispose: true));
-    //    _logger = loggerFactory.CreateLogger<YouTubeService>();
-    //    _converter = new FfmpegConverter(_executor, _logger);
-    //}
     public YouTubeService(IProcessExecutor executor,
     IYtDlpOutputParser parser,
     IFfmpegConverter converter,
@@ -77,7 +46,7 @@ public class YouTubeService : IYouTubeService {
             var result = await _executor.ExecuteAsync(_ytDlpPath, args, cancellationToken);
             if (result.ExitCode != 0) {
                 var errorMsg = $"Ошибка yt-dlp: {result.StandardError}";
-                Log.Error(errorMsg);
+                _logger.LogError(errorMsg);
                 return new ResultDto<List<VideoFormat>>(false, errorMsg, null!);
             }
 
@@ -137,7 +106,7 @@ public class YouTubeService : IYouTubeService {
         } catch (OperationCanceledException) {
             return new ResultDto<List<VideoFormat>>(false, "Операция отменена", null!);
         } catch (Exception ex) {
-            Log.Error(ex, "GetFormatsAsync error");
+            _logger.LogError(ex, "GetFormatsAsync error");
             return new ResultDto<List<VideoFormat>>(false, ex.Message, null!);
         }
     }
@@ -172,10 +141,10 @@ public class YouTubeService : IYouTubeService {
 
             return new ResultDto<bool>(true, "Загрузка завершена", true);
         } catch (OperationCanceledException) {
-            Log.Information("Download cancelled");
+            _logger.LogInformation("Download cancelled");
             return new ResultDto<bool>(false, "Загрузка отменена", false);
         } catch (Exception ex) {
-            Log.Error(ex, "Download error");
+            _logger.LogError(ex, "Download error");
             return new ResultDto<bool>(false, ex.Message, false);
         }
     }
@@ -222,7 +191,7 @@ public class YouTubeService : IYouTubeService {
         } catch (OperationCanceledException) {
             throw;
         } catch (Exception ex) {
-            Log.Error(ex, "DownloadMainAsync error");
+            _logger.LogError(ex, "DownloadMainAsync error");
             return false;
         }
     }
@@ -239,7 +208,7 @@ public class YouTubeService : IYouTubeService {
         } catch (OperationCanceledException) {
             throw;
         } catch (Exception ex) {
-            Log.Error(ex, "DownloadSimpleAsync error");
+            _logger.LogError(ex, "DownloadSimpleAsync error");
             return false;
         }
     }
@@ -267,7 +236,7 @@ public class YouTubeService : IYouTubeService {
     }
 
     public void CancelDownload() {
-        Log.Information("CancelDownload called");
+        _logger.LogInformation("CancelDownload called");
         _executor.Cancel();
     }
 }

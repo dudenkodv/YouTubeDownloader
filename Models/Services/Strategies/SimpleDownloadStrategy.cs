@@ -17,7 +17,8 @@ public class SimpleDownloadStrategy : IDownloadStrategy {
 
     public SimpleDownloadStrategy(
         IProcessExecutor executor,
-        IYtDlpOutputParser parser, ILogger<SimpleDownloadStrategy> logger) {
+        IYtDlpOutputParser parser, 
+        ILogger<SimpleDownloadStrategy> logger) {
         _executor = executor;
         _parser = parser;
         _logger = logger;

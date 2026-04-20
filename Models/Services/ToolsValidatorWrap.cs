@@ -1,7 +1,4 @@
 ﻿using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Windows;
 
 namespace YouTubeDownloader.Models.Services {

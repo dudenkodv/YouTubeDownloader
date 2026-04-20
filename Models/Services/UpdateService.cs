@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.Logging;
+using Serilog;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -13,11 +14,13 @@ namespace YouTubeDownloader.Models.Services;
 public class UpdateService : IUpdateService {
     private readonly string _toolsDir;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<UpdateService> _logger;
 
-    public UpdateService() {
+    public UpdateService(ILogger<UpdateService> logger) {
         _toolsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools");
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "YouTubeDownloader/1.0");
+        _logger = logger;
 
         if (!Directory.Exists(_toolsDir))
             Directory.CreateDirectory(_toolsDir);
@@ -58,7 +61,7 @@ public class UpdateService : IUpdateService {
 
             return new ResultDto<UpdateInfo>(true, "Успешно", updateInfo);
         } catch (Exception ex) {
-            Log.Error(ex, "CheckYtDlpUpdateAsync error");
+            _logger.LogError(ex, "CheckYtDlpUpdateAsync error");
             return new ResultDto<UpdateInfo>(false, ex.Message, null!);
         }
     }
@@ -78,7 +81,7 @@ public class UpdateService : IUpdateService {
 
             return new ResultDto<UpdateInfo>(true, "Успешно", updateInfo);
         } catch (Exception ex) {
-            Log.Error(ex, "CheckFfmpegUpdateAsync error");
+            _logger.LogError(ex, "CheckFfmpegUpdateAsync error");
             return new ResultDto<UpdateInfo>(false, ex.Message, null!);
         }
     }
@@ -126,7 +129,7 @@ public class UpdateService : IUpdateService {
 
             return new ResultDto<bool>(true, "Обновление установлено", true);
         } catch (Exception ex) {
-            Log.Error(ex, "DownloadAndUpdateToolAsync error");
+            _logger.LogError(ex, "DownloadAndUpdateToolAsync error");
 
             if (File.Exists(backupPath) && !File.Exists(toolPath))
                 File.Move(backupPath, toolPath);
@@ -163,7 +166,7 @@ public class UpdateService : IUpdateService {
 
             return output.Trim();
         } catch (Exception ex) {
-            Log.Error(ex, "GetLocalYtDlpVersionAsync error");
+            _logger.LogError(ex, "GetLocalYtDlpVersionAsync error");
             return null;
         }
     }
@@ -191,7 +194,7 @@ public class UpdateService : IUpdateService {
             var match = Regex.Match(output, @"ffmpeg version (\S+)");
             return match.Success ? match.Groups[1].Value : output.Split('\n').FirstOrDefault()?.Trim();
         } catch (Exception ex) {
-            Log.Error(ex, "GetLocalFfmpegVersionAsync error");
+            _logger.LogError(ex, "GetLocalFfmpegVersionAsync error");
             return null;
         }
     }
@@ -205,7 +208,7 @@ public class UpdateService : IUpdateService {
             var json = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<YtDlpReleaseDto>(json);
         } catch (Exception ex) {
-            Log.Error(ex, "GetLatestYtDlpReleaseAsync error");
+            _logger.LogError(ex, "GetLatestYtDlpReleaseAsync error");
             return null;
         }
     }

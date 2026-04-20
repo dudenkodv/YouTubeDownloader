@@ -1,4 +1,4 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -6,8 +6,8 @@ using System.Windows;
 using System.Windows.Input;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Interfaces;
-using YouTubeDownloader.Models.Services;
 using YouTubeDownloader.Models.ProgressTasks;
+using YouTubeDownloader.Models.Services;
 
 namespace YouTubeDownloader.ViewModels;
 
@@ -22,10 +22,14 @@ public class MainViewModel : ViewModelBase {
     private string? _lastDownloadedPath;
     private CancellationTokenSource? _cts;
     private ObservableCollection<ProgressTask> _activeTasks = new();
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger<MainViewModel> _logger;
 
-    public MainViewModel(IYouTubeService youtubeService) {
-        //_youtubeService = new YouTubeService();
+    public MainViewModel(IYouTubeService youtubeService,
+        ILoggerFactory loggerFactory) {
         _youtubeService = youtubeService;
+        _loggerFactory = loggerFactory;
+        _logger = loggerFactory.CreateLogger<MainViewModel>();
 
         LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
         AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading);
@@ -89,7 +93,7 @@ public class MainViewModel : ViewModelBase {
         IsLoading = true;
         StatusText = "Загрузка информации...";
 
-        var task = new LoadInfoTask(_youtubeService, Url, (formats) => {
+        var task = new LoadInfoTask(_youtubeService, _loggerFactory.CreateLogger<LoadInfoTask>(), Url, (formats) => {
             Application.Current.Dispatcher.Invoke(() => {
                 Formats.Clear();
                 foreach (var format in formats)
@@ -120,7 +124,7 @@ public class MainViewModel : ViewModelBase {
         if (saveDialog.ShowDialog() != true)
             return;
 
-        var task = new DownloadTask(_youtubeService) {
+        var task = new DownloadTask(_youtubeService, _loggerFactory.CreateLogger<DownloadTask>()) {
             Name = videoTitle,
             Url = Url,
             FormatId = SelectedFormat.FormatId,
@@ -143,7 +147,7 @@ public class MainViewModel : ViewModelBase {
         } catch (OperationCanceledException) {
             // статус уже установлен в task.Cancel()
         } catch (Exception ex) {
-            Log.Error(ex, "Ошибка выполнения задачи {TaskName}", task.Name);
+            _logger.LogError(ex, "Ошибка выполнения задачи {TaskName}", task.Name);
             task.Status = $"Ошибка: {ex.Message}";
         } finally {
             task.IsActive = false;
@@ -175,7 +179,7 @@ public class MainViewModel : ViewModelBase {
     }
 
     private async Task CheckUpdatesAsync() {
-        using var updateService = new UpdateService();
+        using var updateService = new UpdateService(_loggerFactory.CreateLogger<UpdateService>());
         StatusText = "Проверка обновлений...";
 
         try {
@@ -207,7 +211,7 @@ public class MainViewModel : ViewModelBase {
                 MessageBox.Show($"Установлена последняя версия yt-dlp ({ytUpdate.CurrentVersion})", "Обновлений нет", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         } catch (Exception ex) {
-            Log.Error(ex, "Ошибка проверки обновлений");
+            _logger.LogError(ex, "Ошибка проверки обновлений");
             MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         } finally {
             StatusText = "Готов";

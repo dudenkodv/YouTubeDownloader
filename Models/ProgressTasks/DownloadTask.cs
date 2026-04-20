@@ -1,4 +1,4 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -8,14 +8,16 @@ namespace YouTubeDownloader.Models.ProgressTasks;
 
 public class DownloadTask : ProgressTask {
     private readonly IYouTubeService _youtubeService;
+    private readonly ILogger<DownloadTask> _logger;
 
     public string Url { get; set; } = string.Empty;
     public string FormatId { get; set; } = string.Empty;
     public string OutputPath { get; set; } = string.Empty;
 
-    public DownloadTask(IYouTubeService youtubeService) {
+    public DownloadTask(IYouTubeService youtubeService, ILogger<DownloadTask> logger) {
         _youtubeService = youtubeService;
         Id = Guid.NewGuid().ToString();
+        _logger = logger;
     }
 
     public override async Task ExecuteAsync(IProgress<double> progress, IProgress<string> status, CancellationToken cancellationToken) {
@@ -48,7 +50,7 @@ public class DownloadTask : ProgressTask {
             Status = "Отменено";
             throw;
         } catch (Exception ex) {
-            Log.Error(ex, "Ошибка загрузки");
+            _logger.LogError(ex, "Ошибка загрузки");
             Status = $"Ошибка: {ex.Message}";
             throw;
         }

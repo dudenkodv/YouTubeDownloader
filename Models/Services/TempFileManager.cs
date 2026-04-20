@@ -1,4 +1,4 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.Logging;
 using System.IO;
 using YouTubeDownloader.Models.Interfaces;
 
@@ -7,10 +7,12 @@ namespace YouTubeDownloader.Models.Services;
 public class TempFileManager : ITempFileManager {
     private readonly string _tempDirectory;
     private bool _disposed;
+    private readonly ILogger<TempFileManager> _logger;
 
-    public TempFileManager() {
+    public TempFileManager(ILogger<TempFileManager> logger) {
         _tempDirectory = Path.Combine(Path.GetTempPath(), "YTDownloader_" + Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempDirectory);
+        _logger = logger;
     }
 
     public string TempDirectory => _tempDirectory;
@@ -27,9 +29,8 @@ public class TempFileManager : ITempFileManager {
         if (Directory.Exists(_tempDirectory)) {
             try {
                 Directory.Delete(_tempDirectory, true);
-                Log.Debug("Temp directory deleted: {TempDir}", _tempDirectory);
             } catch (Exception ex) {
-                Log.Warning(ex, "Failed to delete temp dir");
+                _logger.LogError(ex, "Failed to delete temp dir");
             }
         }
     }
