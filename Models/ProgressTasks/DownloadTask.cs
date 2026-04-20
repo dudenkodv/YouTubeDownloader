@@ -14,10 +14,8 @@ public class DownloadTask : ProgressTask {
     public string FormatId { get; set; } = string.Empty;
     public string OutputPath { get; set; } = string.Empty;
 
-    public DownloadTask(IYouTubeService youtubeService, ILogger<DownloadTask> logger) {
+    public DownloadTask(IYouTubeService youtubeService, ILogger<DownloadTask> logger) : base(logger) {
         _youtubeService = youtubeService;
-        Id = Guid.NewGuid().ToString();
-        _logger = logger;
     }
 
     public override async Task ExecuteAsync(IProgress<double> progress, IProgress<string> status, CancellationToken cancellationToken) {

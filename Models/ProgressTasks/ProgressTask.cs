@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using Microsoft.Extensions.Logging;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using YouTubeDownloader.Models.Interfaces;
 
@@ -11,6 +12,12 @@ public abstract class ProgressTask : IProgressTask, INotifyPropertyChanged {
     private double _progress;
     private bool _isActive = true;
     private CancellationTokenSource? _cts;
+    protected readonly ILogger _logger;
+
+    protected ProgressTask(ILogger logger) {
+        _logger = logger;
+        _id = Guid.NewGuid().ToString();
+    }
 
     public string Id {
         get => _id;
@@ -46,6 +53,7 @@ public abstract class ProgressTask : IProgressTask, INotifyPropertyChanged {
     }
 
     public void Cancel() {
+        _logger.LogInformation("Отмена задачи: {TaskName}, Id: {TaskId}", Name, Id);
         _cts?.Cancel();
         Status = "Отменено";
     }

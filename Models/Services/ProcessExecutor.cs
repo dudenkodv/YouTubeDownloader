@@ -1,11 +1,17 @@
 ﻿using CliWrap;
 using CliWrap.Buffered;
+using Microsoft.Extensions.Logging;
 using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.Services;
 
 public class ProcessExecutor : IProcessExecutor {
+    private readonly ILogger<ProcessExecutor> _logger;
     private CancellationTokenSource? _currentCts;
+
+    public ProcessExecutor(ILogger<ProcessExecutor> logger) {
+        _logger = logger;
+    }
 
     public async Task<BufferedCommandResult> ExecuteAsync(string executable, string args, CancellationToken cancellationToken = default) {
         _currentCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -33,6 +39,7 @@ public class ProcessExecutor : IProcessExecutor {
     }
 
     public void Cancel() {
+        _logger.LogInformation("Cancel requested");
         _currentCts?.Cancel();
     }
 }
