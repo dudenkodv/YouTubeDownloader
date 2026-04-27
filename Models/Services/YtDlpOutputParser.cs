@@ -1,4 +1,6 @@
-﻿using YouTubeDownloader.Models.Interfaces;
+﻿using System.Globalization;
+using System.Xml.Xsl;
+using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.Services;
 
@@ -6,8 +8,6 @@ namespace YouTubeDownloader.Models.Services;
 /// Парсер вывода yt-dlp
 /// </summary>
 public class YtDlpOutputParser : IYtDlpOutputParser {
-    private static readonly System.Text.RegularExpressions.Regex ProgressRegex =
-        new System.Text.RegularExpressions.Regex(@"(\\d+(?:\\.\\d+)?)%");
 
     private static readonly System.Text.RegularExpressions.Regex DestinationRegex =
         new System.Text.RegularExpressions.Regex(@"Destination:\s*(.+)$");
@@ -18,14 +18,11 @@ public class YtDlpOutputParser : IYtDlpOutputParser {
 
         if (!line.Contains("[download]") || !line.Contains('%'))
             return null;
-
-        var match = ProgressRegex.Match(line);
-        if (match.Success && double.TryParse(match.Groups[1].Value,
-            System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture,
-            out var percent)) {
+        //регулярка не парсит строку вида
+        //[download]   0.0% of  169.63MiB at  281.99KiB/s ETA 10:15
+        var strPercent = line.Split(" ").FirstOrDefault(str => str.Contains('%'))?.TrimEnd('%');
+        if(double.TryParse(strPercent, NumberStyles.Any, CultureInfo.InvariantCulture, out var percent))
             return percent;
-        }
 
         return null;
     }
