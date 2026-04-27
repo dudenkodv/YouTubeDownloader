@@ -32,8 +32,8 @@ public class YouTubeService : IYouTubeService {
         _converter = converter;
         _tempFileManagerFactory = tempFileManagerFactory;
         _logger = logger;
-        _formatStrategy = strategyFactory.CreateFormatStrategy();
-        _simpleStrategy = strategyFactory.CreateSimpleStrategy();
+        _formatStrategy = strategyFactory.Create(DownloadStrategyType.Format);
+        _simpleStrategy = strategyFactory.Create(DownloadStrategyType.Simple);
     }
 
     public async Task<ResultDto<List<VideoFormat>>> GetFormatsAsync(string url, IProgress<string>? progress = null, CancellationToken cancellationToken = default) {

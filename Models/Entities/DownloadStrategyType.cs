@@ -1,0 +1,10 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace YouTubeDownloader.Models.Entities;
+
+public enum DownloadStrategyType {
+    Format,
+    Simple
+}

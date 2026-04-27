@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using YouTubeDownloader.Models.Entities;
 
 namespace YouTubeDownloader.Models.Interfaces;
 
@@ -8,6 +9,5 @@ namespace YouTubeDownloader.Models.Interfaces;
 /// Фабрика стратегий скачивания
 /// </summary>
 public interface IDownloadStrategyFactory {
-    IDownloadStrategy CreateFormatStrategy();
-    IDownloadStrategy CreateSimpleStrategy();
+    IDownloadStrategy Create(DownloadStrategyType type);
 }

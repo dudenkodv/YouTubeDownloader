@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Services.Strategies;
 
@@ -16,11 +17,11 @@ public class DownloadStrategyFactory : IDownloadStrategyFactory {
         _simpleStrategy = simpleStrategy;
     }
 
-    public IDownloadStrategy CreateFormatStrategy() {
-        return _formatStrategy;
-    }
-
-    public IDownloadStrategy CreateSimpleStrategy() {
-        return _simpleStrategy;
+    public IDownloadStrategy Create(DownloadStrategyType type) {
+        return type switch {
+            DownloadStrategyType.Format => _formatStrategy,
+            DownloadStrategyType.Simple => _simpleStrategy,
+            _ => throw new NotSupportedException($"Strategy {type} not supported")
+        };
     }
 }
