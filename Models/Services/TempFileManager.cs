@@ -13,6 +13,7 @@ public class TempFileManager : ITempFileManager {
         _tempDirectory = Path.Combine(Path.GetTempPath(), "YTDownloader_" + Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempDirectory);
         _logger = logger;
+        _logger.LogInformation($"_tempDirectory: {_tempDirectory}");
     }
 
     public string TempDirectory => _tempDirectory;

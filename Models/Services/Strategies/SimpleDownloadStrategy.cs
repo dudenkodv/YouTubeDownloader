@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml.Linq;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Services.Arguments;
 
@@ -26,37 +27,45 @@ public class SimpleDownloadStrategy : IDownloadStrategy {
 
     public async Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
         IProgress<double>? progress, IProgress<string>? status, CancellationToken cancellationToken) {
-        var args = CommandBuilder.Create()
-            .Verbose()
-            .Url(url)
-            .Build();
+        try {
+            var args = CommandBuilder.Create()
+        .Verbose()
+        .Url(url)
+        .Build();
 
-        status?.Report("Скачивание видео (простой режим)...");
+            status?.Report("Скачивание видео (простой режим)...");
 
-        string? downloadedFile = null;
-        var lastPercent = 0;
+            string? downloadedFile = null;
+            var lastPercent = 0;
 
-        await _executor.ExecuteStreamingAsync(executable, args,
-            onStdOut: line => {
-                var percent = _parser.ParsePercent(line);
-                if (percent.HasValue && (int)percent.Value != lastPercent) {
-                    lastPercent = (int)percent.Value;
-                    progress?.Report(percent.Value);
-                }
-            },
-            onStdErr: line => {
-                var percent = _parser.ParsePercent(line);
-                if (percent.HasValue && (int)percent.Value != lastPercent) {
-                    lastPercent = (int)percent.Value;
-                    progress?.Report(percent.Value);
-                }
+            await _executor.ExecuteStreamingAsync(executable, args,
+                onStdOut: line => {
+                    var percent = _parser.ParsePercent(line);
+                    if (percent.HasValue && (int)percent.Value != lastPercent) {
+                        lastPercent = (int)percent.Value;
+                        progress?.Report(percent.Value);
+                    }
+                },
+                onStdErr: line => {
+                    var percent = _parser.ParsePercent(line);
+                    if (percent.HasValue && (int)percent.Value != lastPercent) {
+                        lastPercent = (int)percent.Value;
+                        progress?.Report(percent.Value);
+                    }
 
-                var dest = _parser.ParseDestination(line);
-                if (!string.IsNullOrEmpty(dest))
-                    downloadedFile = dest;
-            },
-            cancellationToken: cancellationToken);
+                    var dest = _parser.ParseDestination(line);
+                    if (!string.IsNullOrEmpty(dest))
+                        downloadedFile = dest;
+                },
+                cancellationToken: cancellationToken);
 
-        return downloadedFile;
+            return downloadedFile;
+        } catch (OperationCanceledException) {
+            _logger.LogInformation("SimpleDownloadStrategy отменён");
+            throw;
+        } catch (Exception) {
+
+            throw;
+        }
     }
 }

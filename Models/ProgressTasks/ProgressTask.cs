@@ -46,14 +46,19 @@ public abstract class ProgressTask : IProgressTask, INotifyPropertyChanged {
 
     public CancellationToken CancellationToken => _cts?.Token ?? CancellationToken.None;
 
-    public CancellationTokenSource CreateCancellationTokenSource() {
-        _cts?.Dispose();
-        _cts = new CancellationTokenSource();
-        return _cts;
+
+    public CancellationTokenSource? CancellationTokenSource {
+        get => _cts;
+        set {
+            _cts?.Dispose();
+            _cts = value;
+        }
     }
 
     public void Cancel() {
-        _logger.LogInformation("Отмена задачи: {TaskName}, Id: {TaskId}", Name, Id);
+        _logger.LogInformation("Cancel() вызван для задачи {TaskName}, Id: {TaskId}", Name, Id);
+        _logger.LogInformation("  _cts is null: {IsNull}, HashCode: {HashCode}",
+            _cts is null, _cts?.GetHashCode());
         _cts?.Cancel();
         Status = "Отменено";
     }

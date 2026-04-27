@@ -117,14 +117,15 @@ public class YouTubeService : IYouTubeService {
         IProgress<double>? progress = null,
         IProgress<string>? status = null,
         CancellationToken cancellationToken = default) {
+        _logger.LogInformation("YouTubeService DownloadAsync получил cancellationToken с HashCode: {HashCode}", cancellationToken.GetHashCode());
         using var tempManager = _tempFileManagerFactory.Create();
         try {
             var outputTemplate = tempManager.GetOutputTemplate(fileName);
 
-            var result = await DownloadMainAsync(url, formatId, outputTemplate, progress, status);
+            var result = await DownloadMainAsync(url, formatId, outputTemplate, progress, status, cancellationToken);
 
             if (!result) {
-                result = await DownloadSimpleAsync(url);
+                result = await DownloadSimpleAsync(url, outputTemplate, progress, status, cancellationToken);
 
                 if (!result) {
                     return new ResultDto<bool>(false, "Ошибка при скачивании", false);
@@ -141,7 +142,7 @@ public class YouTubeService : IYouTubeService {
 
             return new ResultDto<bool>(true, "Загрузка завершена", true);
         } catch (OperationCanceledException) {
-            _logger.LogInformation("Download cancelled");
+            _logger.LogInformation("YouTubeService.DownloadAsync отменён для {FileName}", fileName);
             return new ResultDto<bool>(false, "Загрузка отменена", false);
         } catch (Exception ex) {
             _logger.LogError(ex, "Download error");
@@ -149,19 +150,49 @@ public class YouTubeService : IYouTubeService {
         }
     }
 
-    private async Task<bool> DownloadMainAsync(string url, string formatId, string outputTemplate,
-        IProgress<double>? progress = null, IProgress<string>? status = null) {
-        try {
-            var args = CommandBuilder.Create()
-                .Verbose()
-                .Format(formatId)
-                .Output(outputTemplate)
-                .NoWarnings()
-                .Newline()
-                .Progress()
-                .Url(url)
-                .Build();
 
+    private async Task<bool> DownloadMainAsync(
+        string url, 
+        string formatId, 
+        string outputTemplate,
+        IProgress<double>? progress = null, 
+        IProgress<string>? status = null,
+        CancellationToken cancellationToken = default) {
+        var args = CommandBuilder.Create()
+            .Verbose()
+            .Format(formatId)
+            .Output(outputTemplate)
+            .NoWarnings()
+            .Newline()
+            .Progress()
+            .Url(url)
+            .Build();
+
+        return await DownloadWithArgsAsync(args, url, progress, status, cancellationToken);
+    }
+
+    private async Task<bool> DownloadSimpleAsync(
+        string url, 
+        string outputTemplate,
+        IProgress<double>? progress = null,
+        IProgress<string>? status = null,
+        CancellationToken cancellationToken = default) {
+        var args = CommandBuilder.Create()
+            .Verbose()
+            .Output(outputTemplate)  // ← добавить outputTemplate
+            .Url(url)
+            .Build();
+
+        return await DownloadWithArgsAsync(args, url, progress, status, cancellationToken);
+    }
+
+    private async Task<bool> DownloadWithArgsAsync(
+        string args, 
+        string url,
+        IProgress<double>? progress = null,
+        IProgress<string>? status = null,
+        CancellationToken cancellationToken = default) {
+        try {
             status?.Report("Скачивание видео...");
 
             string? downloadedFile = null;
@@ -185,36 +216,22 @@ public class YouTubeService : IYouTubeService {
                     var dest = _parser.ParseDestination(line);
                     if (!string.IsNullOrEmpty(dest))
                         downloadedFile = dest;
-                });
+                },
+                cancellationToken: cancellationToken);
 
             return !string.IsNullOrEmpty(downloadedFile);
         } catch (OperationCanceledException) {
+            _logger.LogInformation("DownloadWithArgsAsync: Отмена получена");
             throw;
         } catch (Exception ex) {
-            _logger.LogError(ex, "DownloadMainAsync error");
-            return false;
-        }
-    }
-
-    private async Task<bool> DownloadSimpleAsync(string url) {
-        try {
-            var args = CommandBuilder.Create()
-                .Verbose()
-                .Url(url)
-                .Build();
-
-            await _executor.ExecuteAsync(_ytDlpPath, args);
-            return true;
-        } catch (OperationCanceledException) {
-            throw;
-        } catch (Exception ex) {
-            _logger.LogError(ex, "DownloadSimpleAsync error");
+            _logger.LogError(ex, "DownloadWithArgsAsync error");
             return false;
         }
     }
 
     private async Task ProcessDownloadedFileAsync(string downloadedFile, string outputPath, string fileName,
-        IProgress<double>? progress = null, IProgress<string>? status = null) {
+        IProgress<double>? progress = null, 
+        IProgress<string>? status = null) {
         var extension = Path.GetExtension(downloadedFile).ToLower();
 
         if (extension == ".m4a") {

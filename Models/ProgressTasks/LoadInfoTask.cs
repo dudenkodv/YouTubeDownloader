@@ -8,7 +8,6 @@ public class LoadInfoTask : ProgressTask {
     private readonly IYouTubeService _youtubeService;
     private readonly string _url;
     private readonly Action<List<VideoFormat>> _onFormatsLoaded;
-    private readonly ILogger<LoadInfoTask> _logger;
 
     public LoadInfoTask(IYouTubeService youtubeService, ILogger<LoadInfoTask> logger, string url, Action<List<VideoFormat>> onFormatsLoaded) : base(logger) {
         _youtubeService = youtubeService;

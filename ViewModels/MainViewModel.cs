@@ -150,7 +150,11 @@ public class MainViewModel : ViewModelBase {
     }
 
     private async Task RunTaskAsync(ProgressTask task) {
-        using var cts = task.CreateCancellationTokenSource();
+        using var cts = new CancellationTokenSource();
+        task.CancellationTokenSource = cts;  // ← ПЕРЕДАЁМ ССЫЛКУ
+
+        _logger.LogInformation("RunTaskAsync: создан cts с HashCode: {HashCode}", cts.GetHashCode());
+        _logger.LogInformation("  Задача: {TaskName}, Id: {TaskId}", task.Name, task.Id);
 
         var progress = new Progress<double>(p => task.Progress = p);
         var status = new Progress<string>(s => task.Status = s);
@@ -159,11 +163,13 @@ public class MainViewModel : ViewModelBase {
             await task.ExecuteAsync(progress, status, cts.Token);
         } catch (OperationCanceledException) {
             // статус уже установлен в task.Cancel()
+            _logger.LogInformation($"MainViewModel.RunTaskAsync cancel");
         } catch (Exception ex) {
             _logger.LogError(ex, "Ошибка выполнения задачи {TaskName}", task.Name);
             task.Status = $"Ошибка: {ex.Message}";
         } finally {
             task.IsActive = false;
+            task.CancellationTokenSource = null;  // ← ОЧИЩАЕМ
             if (task is DownloadTask downloadTask && downloadTask.Status == "Завершено") {
                 _lastDownloadedPath = downloadTask.OutputPath;
             }

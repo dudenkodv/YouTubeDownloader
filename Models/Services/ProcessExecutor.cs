@@ -1,6 +1,7 @@
 ﻿using CliWrap;
 using CliWrap.Buffered;
 using Microsoft.Extensions.Logging;
+using Serilog;
 using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.Services;
@@ -14,14 +15,22 @@ public class ProcessExecutor : IProcessExecutor {
     }
 
     public async Task<BufferedCommandResult> ExecuteAsync(string executable, string args, CancellationToken cancellationToken = default) {
-        _currentCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        try {
+            _currentCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        var result = await Cli.Wrap(executable)
-            .WithArguments(args)
-            .WithValidation(CommandResultValidation.None)
-            .ExecuteBufferedAsync(_currentCts.Token);
+            var result = await Cli.Wrap(executable)
+                .WithArguments(args)
+                .WithValidation(CommandResultValidation.None)
+                .ExecuteBufferedAsync(_currentCts.Token);
 
-        return result;
+            return result;
+        } catch (OperationCanceledException) {
+            _logger.LogInformation("ProcessExecutor.ExecuteAsync: Отмена получена");
+            throw;
+        } catch (Exception) {
+
+            throw;
+        }
     }
 
     public async Task ExecuteStreamingAsync(string executable, string args,
@@ -39,6 +48,7 @@ public class ProcessExecutor : IProcessExecutor {
     }
 
     public void Cancel() {
+        _logger.LogInformation("ProcessExecutor.Cancel() вызван. _currentCts is null: {IsNull}", _currentCts is null);
         _logger.LogInformation("Cancel requested");
         _currentCts?.Cancel();
     }

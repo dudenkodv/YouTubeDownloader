@@ -14,8 +14,6 @@ public interface IProgressTask {
     string Status { get; set; }
     double Progress { get; set; }
     bool IsActive { get; set; }
-    CancellationToken CancellationToken { get; }
-    CancellationTokenSource CreateCancellationTokenSource();
     void Cancel();
     void Dispose();
     Task ExecuteAsync(IProgress<double> progress, IProgress<string> status, CancellationToken cancellationToken);

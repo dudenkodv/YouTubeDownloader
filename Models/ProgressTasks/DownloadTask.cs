@@ -8,7 +8,6 @@ namespace YouTubeDownloader.Models.ProgressTasks;
 
 public class DownloadTask : ProgressTask {
     private readonly IYouTubeService _youtubeService;
-    private readonly ILogger<DownloadTask> _logger;
 
     public string Url { get; set; } = string.Empty;
     public string FormatId { get; set; } = string.Empty;
@@ -45,6 +44,7 @@ public class DownloadTask : ProgressTask {
                 }
             });
         } catch (OperationCanceledException) {
+            _logger.LogInformation($"DownloadTask.ExecuteAsync Отменено");
             Status = "Отменено";
             throw;
         } catch (Exception ex) {

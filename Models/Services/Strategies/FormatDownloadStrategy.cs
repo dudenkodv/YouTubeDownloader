@@ -23,42 +23,50 @@ public class FormatDownloadStrategy : IDownloadStrategy {
 
     public async Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
         IProgress<double>? progress, IProgress<string>? status, CancellationToken cancellationToken) {
-        var args = CommandBuilder.Create()
-            .Verbose()
-            .Format(formatId)
-            .Output(outputTemplate)
-            .NoWarnings()
-            .Newline()
-            .Progress()
-            .Url(url)
-            .Build();
+        try {
+            var args = CommandBuilder.Create()
+        .Verbose()
+        .Format(formatId)
+        .Output(outputTemplate)
+        .NoWarnings()
+        .Newline()
+        .Progress()
+        .Url(url)
+        .Build();
 
-        status?.Report("Скачивание видео...");
+            status?.Report("Скачивание видео...");
 
-        string? downloadedFile = null;
-        var lastPercent = 0;
+            string? downloadedFile = null;
+            var lastPercent = 0;
 
-        await _executor.ExecuteStreamingAsync(executable, args,
-            onStdOut: line => {
-                var percent = _parser.ParsePercent(line);
-                if (percent.HasValue && (int)percent.Value != lastPercent) {
-                    lastPercent = (int)percent.Value;
-                    progress?.Report(percent.Value);
-                }
-            },
-            onStdErr: line => {
-                var percent = _parser.ParsePercent(line);
-                if (percent.HasValue && (int)percent.Value != lastPercent) {
-                    lastPercent = (int)percent.Value;
-                    progress?.Report(percent.Value);
-                }
+            await _executor.ExecuteStreamingAsync(executable, args,
+                onStdOut: line => {
+                    var percent = _parser.ParsePercent(line);
+                    if (percent.HasValue && (int)percent.Value != lastPercent) {
+                        lastPercent = (int)percent.Value;
+                        progress?.Report(percent.Value);
+                    }
+                },
+                onStdErr: line => {
+                    var percent = _parser.ParsePercent(line);
+                    if (percent.HasValue && (int)percent.Value != lastPercent) {
+                        lastPercent = (int)percent.Value;
+                        progress?.Report(percent.Value);
+                    }
 
-                var dest = _parser.ParseDestination(line);
-                if (!string.IsNullOrEmpty(dest))
-                    downloadedFile = dest;
-            },
-            cancellationToken: cancellationToken);
+                    var dest = _parser.ParseDestination(line);
+                    if (!string.IsNullOrEmpty(dest))
+                        downloadedFile = dest;
+                },
+                cancellationToken: cancellationToken);
 
-        return downloadedFile;
+            return downloadedFile;
+        } catch (OperationCanceledException) {
+            _logger.LogInformation("FormatDownloadStrategy отменён");
+            throw;
+        } catch (Exception) {
+
+            throw;
+        }
     }
 }
