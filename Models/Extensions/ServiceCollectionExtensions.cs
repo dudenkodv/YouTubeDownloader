@@ -53,7 +53,7 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton<IDownloadStrategyFactory, DownloadStrategyFactory>();
 
         // YouTubeService
-        services.AddTransient<IYouTubeService, YouTubeService>();
+        services.AddSingleton<IYouTubeService, YouTubeService>();
 
         // ViewModels
         services.AddTransient<MainViewModel>();
