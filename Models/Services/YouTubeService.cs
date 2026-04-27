@@ -16,12 +16,15 @@ public class YouTubeService : IYouTubeService {
     private readonly IFfmpegConverter _converter;
     private readonly ITempFileManagerFactory _tempFileManagerFactory;
     private readonly ILogger<YouTubeService> _logger;
+    private readonly IDownloadStrategy _formatStrategy;
+    private readonly IDownloadStrategy _simpleStrategy;
     private string _currentTitle = string.Empty;
     public YouTubeService(IProcessExecutor executor,
     IYtDlpOutputParser parser,
     IFfmpegConverter converter,
     ITempFileManagerFactory tempFileManagerFactory,
-    ILogger<YouTubeService> logger) {
+    ILogger<YouTubeService> logger,
+    IDownloadStrategyFactory strategyFactory) {
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
         _executor = executor;
@@ -29,6 +32,8 @@ public class YouTubeService : IYouTubeService {
         _converter = converter;
         _tempFileManagerFactory = tempFileManagerFactory;
         _logger = logger;
+        _formatStrategy = strategyFactory.CreateFormatStrategy();
+        _simpleStrategy = strategyFactory.CreateSimpleStrategy();
     }
 
     public async Task<ResultDto<List<VideoFormat>>> GetFormatsAsync(string url, IProgress<string>? progress = null, CancellationToken cancellationToken = default) {
@@ -122,18 +127,10 @@ public class YouTubeService : IYouTubeService {
         try {
             var outputTemplate = tempManager.GetOutputTemplate(fileName);
 
-            var result = await DownloadMainAsync(url, formatId, outputTemplate, progress, status, cancellationToken);
-
-            if (!result) {
-                result = await DownloadSimpleAsync(url, outputTemplate, progress, status, cancellationToken);
-
-                if (!result) {
-                    return new ResultDto<bool>(false, "Ошибка при скачивании", false);
-                }
+            var downloadedFile = await _formatStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken);
+            if (string.IsNullOrEmpty(downloadedFile)) {
+                downloadedFile = await _simpleStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken);
             }
-
-            var downloadedFile = tempManager.GetFirstFile();
-
             if (string.IsNullOrEmpty(downloadedFile) || !File.Exists(downloadedFile)) {
                 return new ResultDto<bool>(false, "Файл не найден после загрузки", false);
             }
@@ -147,85 +144,6 @@ public class YouTubeService : IYouTubeService {
         } catch (Exception ex) {
             _logger.LogError(ex, "Download error");
             return new ResultDto<bool>(false, ex.Message, false);
-        }
-    }
-
-
-    private async Task<bool> DownloadMainAsync(
-        string url, 
-        string formatId, 
-        string outputTemplate,
-        IProgress<double>? progress = null, 
-        IProgress<string>? status = null,
-        CancellationToken cancellationToken = default) {
-        var args = CommandBuilder.Create()
-            .Verbose()
-            .Format(formatId)
-            .Output(outputTemplate)
-            .NoWarnings()
-            .Newline()
-            .Progress()
-            .Url(url)
-            .Build();
-
-        return await DownloadWithArgsAsync(args, url, progress, status, cancellationToken);
-    }
-
-    private async Task<bool> DownloadSimpleAsync(
-        string url, 
-        string outputTemplate,
-        IProgress<double>? progress = null,
-        IProgress<string>? status = null,
-        CancellationToken cancellationToken = default) {
-        var args = CommandBuilder.Create()
-            .Verbose()
-            .Output(outputTemplate)  // ← добавить outputTemplate
-            .Url(url)
-            .Build();
-
-        return await DownloadWithArgsAsync(args, url, progress, status, cancellationToken);
-    }
-
-    private async Task<bool> DownloadWithArgsAsync(
-        string args, 
-        string url,
-        IProgress<double>? progress = null,
-        IProgress<string>? status = null,
-        CancellationToken cancellationToken = default) {
-        try {
-            status?.Report("Скачивание видео...");
-
-            string? downloadedFile = null;
-            var lastPercent = 0;
-
-            await _executor.ExecuteStreamingAsync(_ytDlpPath, args,
-                onStdOut: line => {
-                    var percent = _parser.ParsePercent(line);
-                    if (percent.HasValue && (int)percent.Value != lastPercent) {
-                        lastPercent = (int)percent.Value;
-                        progress?.Report(percent.Value);
-                    }
-                },
-                onStdErr: line => {
-                    var percent = _parser.ParsePercent(line);
-                    if (percent.HasValue && (int)percent.Value != lastPercent) {
-                        lastPercent = (int)percent.Value;
-                        progress?.Report(percent.Value);
-                    }
-
-                    var dest = _parser.ParseDestination(line);
-                    if (!string.IsNullOrEmpty(dest))
-                        downloadedFile = dest;
-                },
-                cancellationToken: cancellationToken);
-
-            return !string.IsNullOrEmpty(downloadedFile);
-        } catch (OperationCanceledException) {
-            _logger.LogInformation("DownloadWithArgsAsync: Отмена получена");
-            throw;
-        } catch (Exception ex) {
-            _logger.LogError(ex, "DownloadWithArgsAsync error");
-            return false;
         }
     }
 

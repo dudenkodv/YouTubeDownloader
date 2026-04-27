@@ -10,7 +10,8 @@ public class TempFileManager : ITempFileManager {
     private readonly ILogger<TempFileManager> _logger;
 
     public TempFileManager(ILogger<TempFileManager> logger) {
-        _tempDirectory = Path.Combine(Path.GetTempPath(), "YTDownloader_" + Guid.NewGuid().ToString());
+        var pathDir = AppDomain.CurrentDomain.BaseDirectory;//Path.GetTempPath()
+        _tempDirectory = Path.Combine(pathDir, "YTDownloader_" + Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempDirectory);
         _logger = logger;
         _logger.LogInformation($"_tempDirectory: {_tempDirectory}");

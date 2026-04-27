@@ -8,5 +8,6 @@ namespace YouTubeDownloader.Models.Interfaces;
 /// Фабрика стратегий скачивания
 /// </summary>
 public interface IDownloadStrategyFactory {
-    IDownloadStrategy Create(bool useFormat = true);
+    IDownloadStrategy CreateFormatStrategy();
+    IDownloadStrategy CreateSimpleStrategy();
 }

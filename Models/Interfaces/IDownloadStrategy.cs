@@ -18,5 +18,6 @@ public interface IDownloadStrategy {
     /// <param name="cancellationToken">Токен отмены</param>
     /// <returns>Путь к скачанному файлу или null</returns>
     Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
-        IProgress<double>? progress, IProgress<string>? status, CancellationToken cancellationToken);
+       IProgress<double>? progress, IProgress<string>? status,
+       CancellationToken cancellationToken);
 }

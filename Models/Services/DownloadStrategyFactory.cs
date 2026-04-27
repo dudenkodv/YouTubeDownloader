@@ -8,15 +8,19 @@ using YouTubeDownloader.Models.Services.Strategies;
 namespace YouTubeDownloader.Models.Services;
 
 public class DownloadStrategyFactory : IDownloadStrategyFactory {
-    private readonly IDownloadStrategy _formatStrategy;
-    private readonly IDownloadStrategy _simpleStrategy;
+    private readonly FormatDownloadStrategy _formatStrategy;
+    private readonly SimpleDownloadStrategy _simpleStrategy;
 
-    public DownloadStrategyFactory(IDownloadStrategy formatStrategy, IDownloadStrategy simpleStrategy) {
+    public DownloadStrategyFactory(FormatDownloadStrategy formatStrategy, SimpleDownloadStrategy simpleStrategy) {
         _formatStrategy = formatStrategy;
         _simpleStrategy = simpleStrategy;
     }
 
-    public IDownloadStrategy Create(bool useFormat = true) {
-        return useFormat ? _formatStrategy : _simpleStrategy;
+    public IDownloadStrategy CreateFormatStrategy() {
+        return _formatStrategy;
+    }
+
+    public IDownloadStrategy CreateSimpleStrategy() {
+        return _simpleStrategy;
     }
 }
