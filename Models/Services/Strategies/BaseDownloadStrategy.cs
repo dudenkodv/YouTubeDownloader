@@ -31,11 +31,11 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
 
     public async Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
     IProgress<double>? progress, IProgress<string>? status,
-    CancellationToken cancellationToken, DownloadType downloadType) {
+    CancellationToken cancellationToken, DownloadTypeEnum downloadType) {
         try {
             var args = BuildArgs(url, formatId, outputTemplate);
 
-            status?.Report(downloadType.GetDescription());
+            status?.Report($"{downloadType.GetDescription()} {GetStatusMessage()}");
 
             string? downloadedFile = null;
             var lastPercent = 0;
@@ -74,4 +74,5 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
             throw;
         }
     }
+    protected virtual string GetStatusMessage() => "Скачивание...";
 }

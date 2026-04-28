@@ -12,8 +12,8 @@ public class TempFileManager : ITempFileManager {
     public TempFileManager(ILogger<TempFileManager> logger) {
         //todo добиться работоспособности чтобы чтобы временная папка была в папке с программаой
         //и сделать в интерфейсе кнопку для открытия такой папки
-        var pathDir = AppDomain.CurrentDomain.BaseDirectory;
-        //var pathDir = Path.GetTempPath();
+        //var pathDir = AppDomain.CurrentDomain.BaseDirectory;
+        var pathDir = Path.GetTempPath();
         _tempDirectory = Path.Combine(pathDir, "YTDownloader_" + Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempDirectory);
         _logger = logger;

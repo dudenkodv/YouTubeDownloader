@@ -132,13 +132,13 @@ public class YouTubeService : IYouTubeService {
         try {
             var outputTemplate = tempManager.GetOutputTemplate(fileName);
 
-            var downloadType = (DownloadType)(Convert.ToInt32(isVideoMode));
+            var downloadType = (DownloadTypeEnum)(Convert.ToInt32(isVideoMode));
             var downloadedFile = await _formatStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken, downloadType);
             if (string.IsNullOrEmpty(downloadedFile)) {
+                _logger.LogInformation(" _simpleStrategy.ExecuteAsync start");
                 downloadedFile = await _simpleStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken, downloadType);
             }
             if (string.IsNullOrEmpty(downloadedFile) || !File.Exists(downloadedFile)) {
-                //todo тут что-то не так при скачивании аудио. Возможно и видео
                 return new ResultDto<bool>(false, "Файл не найден после загрузки", false);
             }
 
@@ -159,6 +159,9 @@ public class YouTubeService : IYouTubeService {
         IProgress<string>? status = null) {
         var extension = Path.GetExtension(downloadedFile).ToLower();
 
+        var msg = $"ProcessDownloadedFileAsync start. extension = {extension}";
+        _logger.LogInformation(msg);
+
         if (extension == ".m4a") {
             status?.Report("Конвертация в MP3...");
             var finalPath = Path.Combine(outputPath, fileName + ".mp3");
@@ -171,8 +174,12 @@ public class YouTubeService : IYouTubeService {
             if (File.Exists(finalPath))
                 File.Delete(finalPath);
             File.Move(downloadedFile, finalPath);
+            _logger.LogInformation($"downloadedFile = {downloadedFile}");
+            _logger.LogInformation($"finalPath = {finalPath}");
             status?.Report($"Сохранено: {Path.GetFileName(finalPath)}");
         }
+        msg = $"ProcessDownloadedFileAsync end. extension = {extension}";
+        _logger.LogInformation(msg);
 
         progress?.Report(100);
     }

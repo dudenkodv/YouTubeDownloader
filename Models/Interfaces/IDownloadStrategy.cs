@@ -21,5 +21,5 @@ public interface IDownloadStrategy {
     /// <returns>Путь к скачанному файлу или null</returns>
     Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
        IProgress<double>? progress, IProgress<string>? status,
-       CancellationToken cancellationToken, DownloadType downloadType);
+       CancellationToken cancellationToken, DownloadTypeEnum downloadType);
 }
