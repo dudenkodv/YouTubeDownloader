@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using System.IO;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Extensions;
 using YouTubeDownloader.Models.Interfaces;
@@ -38,6 +39,7 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
 
             string? downloadedFile = null;
             var lastPercent = 0;
+            var tempDir = Path.GetDirectoryName(outputTemplate);
 
             await _executor.ExecuteStreamingAsync(executable, args,
                 onStdOut: line => {
@@ -53,12 +55,15 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
                         lastPercent = (int)percent.Value;
                         progress?.Report(percent.Value);
                     }
-
-                    var dest = _parser.ParseDestination(line);
-                    if (!string.IsNullOrEmpty(dest))
-                        downloadedFile = dest;
                 },
                 cancellationToken: cancellationToken);
+
+            // После завершения просто берём первый файл из временной папки
+            if (tempDir != null && Directory.Exists(tempDir)) {
+                var files = Directory.GetFiles(tempDir);
+                downloadedFile = files.FirstOrDefault();
+                _logger.LogInformation("Files in temp dir: {Count}, first: {File}", files.Length, downloadedFile);
+            }
 
             return downloadedFile;
         } catch (OperationCanceledException) {
