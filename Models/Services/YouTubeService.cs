@@ -5,6 +5,7 @@ using YouTubeDownloader.Models.DTOs;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Extensions;
 using YouTubeDownloader.Models.Interfaces;
+using YouTubeDownloader.Models.Interfaces.Factories;
 using YouTubeDownloader.Models.Services.Arguments;
 
 namespace YouTubeDownloader.Models.Services;

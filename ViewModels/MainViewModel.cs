@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Interfaces;
+using YouTubeDownloader.Models.Interfaces.Factories;
 using YouTubeDownloader.Models.ProgressTasks;
 using YouTubeDownloader.Models.Services;
 

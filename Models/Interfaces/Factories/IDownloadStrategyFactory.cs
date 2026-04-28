@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using YouTubeDownloader.Models.Entities;
 
-namespace YouTubeDownloader.Models.Interfaces;
+namespace YouTubeDownloader.Models.Interfaces.Factories;
 
 /// <summary>
 /// Фабрика стратегий скачивания

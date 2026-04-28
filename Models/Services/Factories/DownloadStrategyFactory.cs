@@ -4,9 +4,10 @@ using System.Collections.Generic;
 using System.Text;
 using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Interfaces;
+using YouTubeDownloader.Models.Interfaces.Factories;
 using YouTubeDownloader.Models.Services.Strategies;
 
-namespace YouTubeDownloader.Models.Services;
+namespace YouTubeDownloader.Models.Services.Factories;
 
 public class DownloadStrategyFactory : IDownloadStrategyFactory {
     private readonly FormatDownloadStrategy _formatStrategy;

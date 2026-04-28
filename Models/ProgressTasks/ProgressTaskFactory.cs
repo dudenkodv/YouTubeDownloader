@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using YouTubeDownloader.Models.Interfaces;
+using YouTubeDownloader.Models.Interfaces.Factories;
 
 namespace YouTubeDownloader.Models.ProgressTasks;
 
