@@ -29,11 +29,12 @@ public interface IYouTubeService {
     /// <param name="formatId">ID формата для скачивания</param>
     /// <param name="outputPath">Путь для сохранения файла</param>
     /// <param name="fileName">Желаемое имя файла (без расширения)</param>
+    /// <param name="isVideoMode">Режима скачивания видео или аудио</param>
     /// <param name="progress">Прогресс загрузки (0-100)</param>
     /// <param name="status">Текстовый статус операции</param>
     /// <param name="cancellationToken">Токен для отмены операции</param>
     /// <returns>Результат операции</returns>
-    Task<ResultDto<bool>> DownloadAsync(string url, string formatId, string outputPath, string fileName,
+    Task<ResultDto<bool>> DownloadAsync(string url, string formatId, string outputPath, string fileName, bool isVideoMode,
         IProgress<double>? progress = null,
         IProgress<string>? status = null,
         CancellationToken cancellationToken = default);

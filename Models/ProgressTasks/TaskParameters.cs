@@ -12,4 +12,5 @@ public class TaskParameters {
     public string OutputPath { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public Action<List<VideoFormat>>? OnFormatsLoaded { get; set; }
+    public bool IsVideoMode { get; set; }
 }

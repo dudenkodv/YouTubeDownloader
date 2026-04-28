@@ -9,5 +9,5 @@ namespace YouTubeDownloader.Models.Interfaces.Factories;
 /// Фабрика стратегий скачивания
 /// </summary>
 public interface IDownloadStrategyFactory {
-    IDownloadStrategy Create(DownloadStrategyType type);
+    IDownloadStrategy Create(DownloadStrategyTypeEnum type);
 }

@@ -1,4 +1,5 @@
-﻿using YouTubeDownloader.Models.Interfaces;
+﻿using YouTubeDownloader.Models.Entities;
+using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.Interfaces;
 
@@ -16,8 +17,9 @@ public interface IDownloadStrategy {
     /// <param name="progress">Прогресс скачивания</param>
     /// <param name="status">Статус операции</param>
     /// <param name="cancellationToken">Токен отмены</param>
+    /// <param name="downloadType">тип скачивания видео или аудио</param>
     /// <returns>Путь к скачанному файлу или null</returns>
     Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
        IProgress<double>? progress, IProgress<string>? status,
-       CancellationToken cancellationToken);
+       CancellationToken cancellationToken, DownloadType downloadType);
 }

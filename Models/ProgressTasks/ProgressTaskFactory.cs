@@ -24,14 +24,13 @@ public class ProgressTaskFactory : IProgressTaskFactory {
                 parameters.Url,
                 parameters.OnFormatsLoaded!),
 
-            TaskType.Download => new DownloadTask(
-                _youtubeService,
-                _loggerFactory.CreateLogger<DownloadTask>()) {
+            TaskType.Download => new DownloadTask(_youtubeService, _loggerFactory.CreateLogger<DownloadTask>(), parameters.IsVideoMode) 
+            {
                 Name = parameters.Name,
                 Url = parameters.Url,
                 FormatId = parameters.FormatId,
                 OutputPath = parameters.OutputPath,
-                Status = "Ожидание"
+                Status = "Ожидание"                
             },
 
             _ => throw new NotSupportedException($"Task type {parameters.Type} not supported")

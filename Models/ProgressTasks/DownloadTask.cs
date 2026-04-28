@@ -8,13 +8,15 @@ namespace YouTubeDownloader.Models.ProgressTasks;
 
 public class DownloadTask : ProgressTask {
     private readonly IYouTubeService _youtubeService;
+    private readonly bool _isVideoMode;
 
     public string Url { get; set; } = string.Empty;
     public string FormatId { get; set; } = string.Empty;
     public string OutputPath { get; set; } = string.Empty;
 
-    public DownloadTask(IYouTubeService youtubeService, ILogger<DownloadTask> logger) : base(logger) {
+    public DownloadTask(IYouTubeService youtubeService, ILogger<DownloadTask> logger, bool isVideoMode) : base(logger) {
         _youtubeService = youtubeService;
+        _isVideoMode = isVideoMode;
     }
 
     public override async Task ExecuteAsync(IProgress<double> progress, IProgress<string> status, CancellationToken cancellationToken) {
@@ -22,7 +24,7 @@ public class DownloadTask : ProgressTask {
             var directory = Path.GetDirectoryName(OutputPath) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
             var fileName = Path.GetFileNameWithoutExtension(OutputPath);
 
-            var result = await _youtubeService.DownloadAsync(Url, FormatId, directory, fileName, progress, status, cancellationToken);
+            var result = await _youtubeService.DownloadAsync(Url, FormatId, directory, fileName, _isVideoMode, progress, status, cancellationToken);
             if (!result.isSuccess) {
                 Status = result.message;
                 return;

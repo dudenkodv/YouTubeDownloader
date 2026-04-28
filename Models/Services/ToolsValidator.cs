@@ -23,7 +23,5 @@ public static class ToolsValidator {
                 throw new FileNotFoundException(error, toolPath);
             }
         }
-
-        Log.Information("Все инструменты найдены в {ToolsDir}", toolsDir);
     }
 }

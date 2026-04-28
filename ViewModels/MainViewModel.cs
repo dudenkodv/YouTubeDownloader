@@ -26,6 +26,9 @@ public class MainViewModel : ViewModelBase {
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<MainViewModel> _logger;
     private readonly IProgressTaskFactory _taskFactory;
+    private bool _isSpinnerVisible;
+    private string _spinnerText = "Загрузка...";
+    private int cancelCount = 0;
 
     public MainViewModel(IYouTubeService youtubeService,
         ILoggerFactory loggerFactory,
@@ -36,16 +39,12 @@ public class MainViewModel : ViewModelBase {
 
         LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
         AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading);
-        CancelTaskCommand = new RelayCommand((object? param) =>
-        {
-            _logger.LogInformation("CancelTaskCommand вызван. Parameter: {Parameter}", param);
-            CancelTask(param);
-        }, (object? param) => true);
+        CancelTaskCommand = new RelayCommand(Cancel);
         OpenLogsCommand = new RelayCommand(OpenLogs);
         OpenFolderCommand = new RelayCommand(OpenFolder, () => !string.IsNullOrEmpty(_lastDownloadedPath));
-        CheckUpdatesCommand = new RelayCommand(async () => await CheckUpdatesAsync(), () => !IsLoading);
+        CheckUpdatesCommand = new RelayCommand(CheckUpdatesAsync, () => !IsLoading);
         _taskFactory = taskFactory;
-    }
+    }    
 
     public string Url {
         get => _url;
@@ -85,6 +84,15 @@ public class MainViewModel : ViewModelBase {
     public ObservableCollection<ProgressTask> ActiveTasks {
         get => _activeTasks;
         set { _activeTasks = value; OnPropertyChanged(); }
+    }
+    public bool IsSpinnerVisible {
+        get => _isSpinnerVisible;
+        set { _isSpinnerVisible = value; OnPropertyChanged(); }
+    }
+
+    public string SpinnerText {
+        get => _spinnerText;
+        set { _spinnerText = value; OnPropertyChanged(); }
     }
 
     public ICommand LoadCommand { get; }
@@ -143,7 +151,8 @@ public class MainViewModel : ViewModelBase {
             Url = Url,
             FormatId = SelectedFormat.FormatId,
             OutputPath = saveDialog.FileName,
-            Name = videoTitle
+            Name = videoTitle,
+            IsVideoMode = IsVideoMode,
         });
 
         ActiveTasks.Add(task);
@@ -181,9 +190,52 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    private void CancelTask(object? parameter) {
-        if (parameter is ProgressTask task && task.IsActive)
-            task.Cancel();
+    private async Task CancelTask(object? parameter) {
+        //todo при отмене надо удалять временную папку или файл
+        cancelCount++;
+        _logger.LogInformation("CancelTask start. cancelCount = {CancelCount}", cancelCount);
+
+        if (parameter is not ProgressTask task || !task.IsActive)
+            return;
+
+        // Показываем спиннер на UI
+        await Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            IsSpinnerVisible = true;
+            SpinnerText = "Отмена задачи...";
+        });
+
+        try {
+            _logger.LogInformation("CancelTask: вызываем task.Cancel()");
+
+            // Отменяем задачу в фоне, не блокируя UI
+            await Task.Run(() => task.Cancel());
+
+            _logger.LogInformation("CancelTask: task.Cancel() выполнен");
+
+            // Даём 1 секунду на graceful отмену
+            await Task.Delay(1000);
+
+            // Если задача всё ещё активна, ждём с таймаутом
+            if (task.IsActive) {
+                _logger.LogInformation("CancelTask: ожидаем завершения задачи...");
+                var timeout = DateTime.Now.AddSeconds(5);
+                while (task.IsActive && DateTime.Now < timeout) {
+                    await Task.Delay(100);
+                }
+
+                if (task.IsActive)
+                    _logger.LogWarning("CancelTask: таймаут ожидания отмены задачи");
+            }
+        } finally {
+            // Скрываем спиннер
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                IsSpinnerVisible = false;
+            });
+
+            _logger.LogInformation("CancelTask завершён. cancelCount = {CancelCount}", cancelCount);
+        }
     }
 
     private void OpenLogs() {
@@ -200,6 +252,10 @@ public class MainViewModel : ViewModelBase {
             if (!string.IsNullOrEmpty(directory) && Directory.Exists(directory))
                 Process.Start("explorer.exe", directory);
         }
+    }
+    private void Cancel(object? param) {
+        _logger.LogInformation("CancelTaskCommand вызван. Parameter: {Parameter}", param);
+        CancelTask(param);
     }
 
     private async Task CheckUpdatesAsync() {

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace YouTubeDownloader.Models.Entities;
 
-public enum DownloadStrategyType {
-    Format,
-    Simple
+public enum ProcessExecutorTypeEnum {
+    CliWrap,
+    Killable
 }

@@ -20,7 +20,7 @@ public class YouTubeService : IYouTubeService {
     private readonly IDownloadStrategy _formatStrategy;
     private readonly IDownloadStrategy _simpleStrategy;
     private string _currentTitle = string.Empty;
-    public YouTubeService(IProcessExecutor executor,
+    public YouTubeService(IProcessExecutorFactory executorFactory,
     IYtDlpOutputParser parser,
     IFfmpegConverter converter,
     ITempFileManagerFactory tempFileManagerFactory,
@@ -28,13 +28,13 @@ public class YouTubeService : IYouTubeService {
     IDownloadStrategyFactory strategyFactory) {
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         _ytDlpPath = Path.Combine(baseDir, "Tools", "yt-dlp.exe");
-        _executor = executor;
+        _executor = executorFactory.Create(ProcessExecutorTypeEnum.Killable);
         _parser = parser;
         _converter = converter;
         _tempFileManagerFactory = tempFileManagerFactory;
         _logger = logger;
-        _formatStrategy = strategyFactory.Create(DownloadStrategyType.Format);
-        _simpleStrategy = strategyFactory.Create(DownloadStrategyType.Simple);
+        _formatStrategy = strategyFactory.Create(DownloadStrategyTypeEnum.Format);
+        _simpleStrategy = strategyFactory.Create(DownloadStrategyTypeEnum.Simple);
     }
 
     public async Task<ResultDto<List<VideoFormat>>> GetFormatsAsync(string url, IProgress<string>? progress = null, CancellationToken cancellationToken = default) {
@@ -50,6 +50,10 @@ public class YouTubeService : IYouTubeService {
                 .Build();
 
             var result = await _executor.ExecuteAsync(_ytDlpPath, args, cancellationToken);
+            if (cancellationToken.IsCancellationRequested) {
+                _logger.LogInformation("Операция отменена пользователем");
+                return new ResultDto<List<VideoFormat>>(false, "Операция отменена по требования пользователя", null!);
+            }
             if (result.ExitCode != 0) {
                 var errorMsg = $"Ошибка yt-dlp: {result.StandardError}";
                 _logger.LogError(errorMsg);
@@ -119,7 +123,7 @@ public class YouTubeService : IYouTubeService {
 
     public string GetVideoTitle() => _currentTitle;
 
-    public async Task<ResultDto<bool>> DownloadAsync(string url, string formatId, string outputPath, string fileName,
+    public async Task<ResultDto<bool>> DownloadAsync(string url, string formatId, string outputPath, string fileName, bool isVideoMode,
         IProgress<double>? progress = null,
         IProgress<string>? status = null,
         CancellationToken cancellationToken = default) {
@@ -128,11 +132,13 @@ public class YouTubeService : IYouTubeService {
         try {
             var outputTemplate = tempManager.GetOutputTemplate(fileName);
 
-            var downloadedFile = await _formatStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken);
+            var downloadType = (DownloadType)(Convert.ToInt32(isVideoMode));
+            var downloadedFile = await _formatStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken, downloadType);
             if (string.IsNullOrEmpty(downloadedFile)) {
-                downloadedFile = await _simpleStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken);
+                downloadedFile = await _simpleStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken, downloadType);
             }
             if (string.IsNullOrEmpty(downloadedFile) || !File.Exists(downloadedFile)) {
+                //todo тут что-то не так при скачивании аудио. Возможно и видео
                 return new ResultDto<bool>(false, "Файл не найден после загрузки", false);
             }
 

@@ -18,10 +18,10 @@ public class DownloadStrategyFactory : IDownloadStrategyFactory {
         _simpleStrategy = simpleStrategy;
     }
 
-    public IDownloadStrategy Create(DownloadStrategyType type) {
+    public IDownloadStrategy Create(DownloadStrategyTypeEnum type) {
         return type switch {
-            DownloadStrategyType.Format => _formatStrategy,
-            DownloadStrategyType.Simple => _simpleStrategy,
+            DownloadStrategyTypeEnum.Format => _formatStrategy,
+            DownloadStrategyTypeEnum.Simple => _simpleStrategy,
             _ => throw new NotSupportedException($"Strategy {type} not supported")
         };
     }

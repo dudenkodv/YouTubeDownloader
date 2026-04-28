@@ -21,6 +21,4 @@ public class SimpleDownloadStrategy : BaseDownloadStrategy {
             .Url(url)
             .Build();
     }
-
-    protected override string GetStatusMessage() => "Скачивание видео (простой режим)...";
 }

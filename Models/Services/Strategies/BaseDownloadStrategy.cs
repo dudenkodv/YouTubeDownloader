@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
+using YouTubeDownloader.Models.Entities;
+using YouTubeDownloader.Models.Extensions;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Services.Arguments;
 
@@ -28,11 +30,11 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
 
     public async Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
     IProgress<double>? progress, IProgress<string>? status,
-    CancellationToken cancellationToken) {
+    CancellationToken cancellationToken, DownloadType downloadType) {
         try {
             var args = BuildArgs(url, formatId, outputTemplate);
 
-            status?.Report(GetStatusMessage());
+            status?.Report(downloadType.GetDescription());
 
             string? downloadedFile = null;
             var lastPercent = 0;
@@ -67,6 +69,4 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
             throw;
         }
     }
-
-    protected virtual string GetStatusMessage() => "Скачивание видео...";
 }

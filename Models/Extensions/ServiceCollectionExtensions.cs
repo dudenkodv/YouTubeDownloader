@@ -54,6 +54,10 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton<SimpleDownloadStrategy>();
         services.AddSingleton<IDownloadStrategyFactory, DownloadStrategyFactory>();
 
+        services.AddSingleton<ProcessExecutor>();
+        services.AddSingleton<ProcessKillExecutor>();
+        services.AddSingleton<IProcessExecutorFactory, ProcessExecutorFactory>();
+
         // YouTubeService
         services.AddSingleton<IYouTubeService, YouTubeService>();
 
