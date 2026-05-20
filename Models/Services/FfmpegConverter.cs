@@ -13,6 +13,7 @@ public class FfmpegConverter : IFfmpegConverter {
         _executor = executor;
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         _ffmpegPath = Path.Combine(baseDir, "Tools", "ffmpeg.exe");
+        _logger = logger;
     }
 
     public async Task ConvertToMp3Async(string inputPath, string outputPath, int bitrate = 192) {

@@ -142,7 +142,7 @@ public class YouTubeService : IYouTubeService {
                 return new ResultDto<bool>(false, "Файл не найден после загрузки", false);
             }
 
-            await ProcessDownloadedFileAsync(downloadedFile, outputPath, fileName, progress, status);
+            await ProcessDownloadedFileAsync(downloadedFile, outputPath, fileName, downloadType, progress, status);
 
             return new ResultDto<bool>(true, "Загрузка завершена", true);
         } catch (OperationCanceledException) {
@@ -154,7 +154,7 @@ public class YouTubeService : IYouTubeService {
         }
     }
 
-    private async Task ProcessDownloadedFileAsync(string downloadedFile, string outputPath, string fileName,
+    private async Task ProcessDownloadedFileAsync(string downloadedFile, string outputPath, string fileName, DownloadTypeEnum downloadType,
         IProgress<double>? progress = null, 
         IProgress<string>? status = null) {
         var extension = Path.GetExtension(downloadedFile).ToLower();
@@ -162,26 +162,34 @@ public class YouTubeService : IYouTubeService {
         var msg = $"ProcessDownloadedFileAsync start. extension = {extension}";
         _logger.LogInformation(msg);
 
-        if (extension == ".m4a") {
-            status?.Report("Конвертация в MP3...");
-            var finalPath = Path.Combine(outputPath, fileName + ".mp3");
-            await _converter.ConvertToMp3Async(downloadedFile, finalPath);
-            File.Delete(downloadedFile);
-            status?.Report($"Сохранено: {Path.GetFileName(finalPath)}");
+        if (downloadType == DownloadTypeEnum.Audio) {
+            await ProcessAudio(downloadedFile, outputPath, fileName, status);
         } else {
-            status?.Report("Сохранение файла...");
-            var finalPath = Path.Combine(outputPath, fileName + extension);
-            if (File.Exists(finalPath))
-                File.Delete(finalPath);
-            File.Move(downloadedFile, finalPath);
-            _logger.LogInformation($"downloadedFile = {downloadedFile}");
-            _logger.LogInformation($"finalPath = {finalPath}");
-            status?.Report($"Сохранено: {Path.GetFileName(finalPath)}");
+            ProcessVideo(downloadedFile, outputPath, fileName, status, extension);
         }
         msg = $"ProcessDownloadedFileAsync end. extension = {extension}";
         _logger.LogInformation(msg);
 
         progress?.Report(100);
+    }
+
+    private void ProcessVideo(string downloadedFile, string outputPath, string fileName, IProgress<string>? status, string extension) {
+        status?.Report("Сохранение файла...");
+        var finalPath = Path.Combine(outputPath, fileName + extension);
+        if (File.Exists(finalPath))
+            File.Delete(finalPath);
+        File.Move(downloadedFile, finalPath);
+        _logger.LogInformation($"downloadedFile = {downloadedFile}");
+        _logger.LogInformation($"finalPath = {finalPath}");
+        status?.Report($"Сохранено: {Path.GetFileName(finalPath)}");
+    }
+
+    private async Task ProcessAudio(string downloadedFile, string outputPath, string fileName, IProgress<string>? status) {
+        status?.Report("Конвертация в MP3...");
+        var finalPath = Path.Combine(outputPath, fileName + ".mp3");
+        await _converter.ConvertToMp3Async(downloadedFile, finalPath);
+        File.Delete(downloadedFile);
+        status?.Report($"Сохранено: {Path.GetFileName(finalPath)}");
     }
 
     public void CancelDownload() {
