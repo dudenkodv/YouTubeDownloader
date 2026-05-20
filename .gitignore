@@ -384,3 +384,6 @@ Logs/
 *.suo
 *.userosscache
 *.sln.docstates
+/Tools/deno.exe
+/Tools/ffmpeg.exe
+/Tools/yt-dlp.exe
