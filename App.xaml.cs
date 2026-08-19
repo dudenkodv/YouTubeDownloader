@@ -34,7 +34,8 @@ public partial class App : Application {
             .CreateLogger();
 
         ToolsValidatorWrap.Check();
-        ZapretService.Start();
+        //todo вынести в настройку
+        //ZapretService.Start();
 
         var services = new ServiceCollection();
         services.AddYouTubeServices();
