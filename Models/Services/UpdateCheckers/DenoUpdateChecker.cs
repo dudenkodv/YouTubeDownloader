@@ -1,33 +1,29 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using YouTubeDownloader.Models.DTOs;
 using YouTubeDownloader.Models.Interfaces;
 
 namespace YouTubeDownloader.Models.Services.UpdateCheckers;
 
-public class DenoUpdateChecker : IUpdateChecker {
-    private readonly IProcessExecutor _processExecutor;
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<DenoUpdateChecker> _logger;
+public class DenoUpdateChecker : BaseUpdateChecker {
+    public override string ToolName => "Deno";
+    public override string ExecutableName => "deno.exe";
 
-    public string ToolName => "Deno";
-    public string ExecutableName => "deno.exe";
-
-    public DenoUpdateChecker(IProcessExecutor processExecutor, HttpClient httpClient, ILogger<DenoUpdateChecker> logger) {
-        _processExecutor = processExecutor;
-        _httpClient = httpClient;
-        _logger = logger;
-
+    public DenoUpdateChecker(
+        IProcessManager processManager,
+        IProcessExecutor processExecutor,
+        HttpClient httpClient,
+        ILogger<DenoUpdateChecker> logger)
+        : base(processManager, processExecutor, httpClient, logger) {
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "YouTubeDownloader/1.0");
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github.v3+json");
     }
 
-    public async Task<string?> GetCurrentVersionAsync(string exePath) {
+    public override async Task<string?> GetCurrentVersionAsync(string exePath) {
         if (!File.Exists(exePath))
             return null;
 
@@ -45,7 +41,7 @@ public class DenoUpdateChecker : IUpdateChecker {
         }
     }
 
-    public async Task<string?> GetLatestVersionAsync() {
+    public override async Task<string?> GetLatestVersionAsync() {
         try {
             var response = await _httpClient.GetAsync("https://api.github.com/repos/denoland/deno/releases/latest");
             if (!response.IsSuccessStatusCode)
@@ -63,63 +59,32 @@ public class DenoUpdateChecker : IUpdateChecker {
         }
     }
 
-    public string GetDownloadUrl(string version) {
+    public override string GetDownloadUrl(string version) {
         return $"https://github.com/denoland/deno/releases/download/v{version}/deno-x86_64-pc-windows-msvc.zip";
     }
 
-    public async Task<ResultDto<bool>> DownloadAndInstallAsync(string downloadUrl, string exePath, IProgress<int>? progress) {
-        try {
-            var tempFile = Path.GetTempFileName() + ".zip";
+    protected override async Task<string?> ExtractFileAsync(string tempFile) {
+        var extractDir = Path.Combine(Path.GetTempPath(), $"{ToolName}Extract_{Guid.NewGuid()}");
+        Directory.CreateDirectory(extractDir);
 
-            using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
+        await Task.Run(() => ZipFile.ExtractToDirectory(tempFile, extractDir));
 
-            var total = response.Content.Headers.ContentLength ?? -1;
-            var downloaded = 0L;
+        var extractedExe = Directory.GetFiles(extractDir, ExecutableName, SearchOption.AllDirectories).FirstOrDefault();
 
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            await using var file = new FileStream(tempFile, FileMode.Create);
+        if (extractedExe == null) {
+            try { Directory.Delete(extractDir, true); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete extract dir"); }
+            return null;
+        }
 
-            var buffer = new byte[8192];
-            int read;
-            while ((read = await stream.ReadAsync(buffer)) > 0) {
-                await file.WriteAsync(buffer.AsMemory(0, read));
-                downloaded += read;
-                progress?.Report(total > 0 ? (int)(downloaded * 100 / total) : 0);
-            }
+        return extractedExe;
+    }
 
-            progress?.Report(100);
+    protected override void Cleanup(string tempFile) {
+        base.Cleanup(tempFile);
 
-            var extractDir = Path.Combine(Path.GetTempPath(), "DenoExtract_" + Guid.NewGuid().ToString());
-            Directory.CreateDirectory(extractDir);
-
-            System.IO.Compression.ZipFile.ExtractToDirectory(tempFile, extractDir);
-            var extractedExe = Directory.GetFiles(extractDir, "deno.exe", SearchOption.AllDirectories).FirstOrDefault();
-
-            if (extractedExe == null) {
-                Directory.Delete(extractDir, true);
-                return new ResultDto<bool>(false, "Deno.exe not found in archive", false);
-            }
-
-            var backupPath = exePath + ".backup";
-            if (File.Exists(backupPath))
-                File.Delete(backupPath);
-            if (File.Exists(exePath))
-                File.Move(exePath, backupPath);
-
-            File.Move(extractedExe, exePath);
-
-            // Очистка
-            Directory.Delete(extractDir, true);
-            File.Delete(tempFile);
-            if (File.Exists(backupPath))
-                File.Delete(backupPath);
-
-            _logger.LogInformation("Deno updated to {Version}", Path.GetFileName(exePath));
-            return new ResultDto<bool>(true, "Update installed successfully", true);
-        } catch (Exception ex) {
-            _logger.LogError(ex, "Failed to download and install {Tool}", ToolName);
-            return new ResultDto<bool>(false, ex.Message, false);
+        var extractDir = Path.GetDirectoryName(tempFile)?.Replace(".zip", "");
+        if (!string.IsNullOrEmpty(extractDir) && Directory.Exists(extractDir)) {
+            try { Directory.Delete(extractDir, true); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to cleanup extract dir"); }
         }
     }
 }
