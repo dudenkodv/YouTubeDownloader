@@ -47,6 +47,7 @@ public class MainViewModel : ViewModelBase {
         OpenLogsCommand = new RelayCommand(OpenLogs);
         OpenFolderCommand = new RelayCommand(OpenFolder, () => !string.IsNullOrEmpty(_lastDownloadedPath));
         CheckUpdatesCommand = new RelayCommand(CheckUpdatesAsync, () => !IsLoading);
+        ClearCompletedCommand = new RelayCommand(ClearCompleted, () => ActiveTasks.Any(t => !t.IsActive));
         _taskFactory = taskFactory;
     }    
 
@@ -105,6 +106,7 @@ public class MainViewModel : ViewModelBase {
     public ICommand OpenLogsCommand { get; }
     public ICommand OpenFolderCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
+    public ICommand ClearCompletedCommand { get; }
 
     private async void LoadInfo() {
         if (string.IsNullOrEmpty(Url))
@@ -300,6 +302,14 @@ public class MainViewModel : ViewModelBase {
         } finally {
             StatusText = "Готов";
         }
+    }
+
+    private void ClearCompleted() {
+        var completed = ActiveTasks.Where(t => !t.IsActive).ToList();
+        foreach (var task in completed) {
+            ActiveTasks.Remove(task);
+        }
+        _logger.LogInformation("Очищено {Count} завершённых задач", completed.Count);
     }
 
     private void UpdateFormatsList() {

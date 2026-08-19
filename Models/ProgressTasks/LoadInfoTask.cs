@@ -9,11 +9,11 @@ public class LoadInfoTask : ProgressTask {
     private readonly string _url;
     private readonly Action<List<VideoFormat>> _onFormatsLoaded;
 
-    public LoadInfoTask(IYouTubeService youtubeService, ILogger<LoadInfoTask> logger, string url, Action<List<VideoFormat>> onFormatsLoaded) : base(logger) {
+    public LoadInfoTask(IYouTubeService youtubeService, ILogger<LoadInfoTask> logger, string url, Action<List<VideoFormat>> onFormatsLoaded, bool isVideoMode) : base(logger) {
         _youtubeService = youtubeService;
         _url = url;
         _onFormatsLoaded = onFormatsLoaded;
-        Name = "Загрузка информации о видео";
+        Name = $"Загрузка информации о {(isVideoMode ? "видео" : "аудио")}";
     }
 
     public override async Task ExecuteAsync(IProgress<double> progress, IProgress<string> status, CancellationToken cancellationToken) {

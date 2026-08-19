@@ -51,13 +51,22 @@
              DisplayMemberPath="DisplayName" Grid.Row="4" Height="150" Margin="10,0,10,10"/>
 
             <!-- Активные задачи -->
-            <GroupBox Header="Активные задачи" Grid.Row="5" Margin="10,0,10,10">
+            <GroupBox Grid.Row="5" Margin="10,0,10,10">
+                <GroupBox.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Активные задачи" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <Button Content="Очистить завершённые" Width="150" Height="25" 
+                    Margin="15,0,0,0" 
+                    Command="{Binding ClearCompletedCommand}"
+                    Padding="5,0"/>
+                    </StackPanel>
+                </GroupBox.Header>
                 <ScrollViewer MaxHeight="200">
                     <ItemsControl ItemsSource="{Binding ActiveTasks}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <local:ProgressTaskControl Task="{Binding}" 
-                            CancelCommand="{Binding DataContext.CancelTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        CancelCommand="{Binding DataContext.CancelTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

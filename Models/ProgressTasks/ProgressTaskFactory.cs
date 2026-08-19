@@ -22,7 +22,8 @@ public class ProgressTaskFactory : IProgressTaskFactory {
                 _youtubeService,
                 _loggerFactory.CreateLogger<LoadInfoTask>(),
                 parameters.Url,
-                parameters.OnFormatsLoaded!),
+                parameters.OnFormatsLoaded!,
+                parameters.IsVideoMode),
 
             TaskType.Download => new DownloadTask(_youtubeService, _loggerFactory.CreateLogger<DownloadTask>(), parameters.IsVideoMode) 
             {
