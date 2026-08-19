@@ -1,5 +1,4 @@
 ﻿using YouTubeDownloader.Models.DTOs;
-using YouTubeDownloader.Models.Entities;
 
 namespace YouTubeDownloader.Models.Interfaces;
 

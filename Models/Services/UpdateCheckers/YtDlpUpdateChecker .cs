@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
@@ -9,13 +8,18 @@ using YouTubeDownloader.Models.Interfaces;
 namespace YouTubeDownloader.Models.Services.UpdateCheckers;
 
 public class YtDlpUpdateChecker : IUpdateChecker {
+    private readonly IProcessExecutor _processExecutor;
     private readonly HttpClient _httpClient;
     private readonly ILogger<YtDlpUpdateChecker> _logger;
 
     public string ToolName => "yt-dlp";
     public string ExecutableName => "yt-dlp.exe";
 
-    public YtDlpUpdateChecker(HttpClient httpClient, ILogger<YtDlpUpdateChecker> logger) {
+    public YtDlpUpdateChecker(
+        IProcessExecutor processExecutor,
+        HttpClient httpClient,
+        ILogger<YtDlpUpdateChecker> logger) {
+        _processExecutor = processExecutor;
         _httpClient = httpClient;
         _logger = logger;
     }
@@ -25,21 +29,8 @@ public class YtDlpUpdateChecker : IUpdateChecker {
             return null;
 
         try {
-            var processInfo = new ProcessStartInfo {
-                FileName = exePath,
-                Arguments = "--version",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(processInfo);
-            if (process == null)
-                return null;
-
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
-            return output.Trim();
+            var result = await _processExecutor.ExecuteAsync(exePath, "--version");
+            return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
         } catch (Exception ex) {
             _logger.LogError(ex, "Failed to get {Tool} version", ToolName);
             return null;
@@ -67,10 +58,11 @@ public class YtDlpUpdateChecker : IUpdateChecker {
 
     public async Task<ResultDto<bool>> DownloadAndInstallAsync(string downloadUrl, string exePath, IProgress<int>? progress) {
         try {
+            var tempFile = Path.GetTempFileName();
+
             using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
 
-            var tempFile = Path.GetTempFileName();
             var total = response.Content.Headers.ContentLength ?? -1;
             var downloaded = 0L;
 
@@ -85,13 +77,16 @@ public class YtDlpUpdateChecker : IUpdateChecker {
                 progress?.Report(total > 0 ? (int)(downloaded * 100 / total) : 0);
             }
 
+            progress?.Report(100);
+
             var backupPath = exePath + ".backup";
             if (File.Exists(backupPath))
                 File.Delete(backupPath);
             if (File.Exists(exePath))
                 File.Move(exePath, backupPath);
             File.Move(tempFile, exePath);
-            File.Delete(backupPath);
+            if (File.Exists(backupPath))
+                File.Delete(backupPath);
 
             return new ResultDto<bool>(true, "Update installed successfully", true);
         } catch (Exception ex) {

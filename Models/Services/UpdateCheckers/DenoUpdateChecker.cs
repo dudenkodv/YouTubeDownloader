@@ -10,13 +10,15 @@ using YouTubeDownloader.Models.Interfaces;
 namespace YouTubeDownloader.Models.Services.UpdateCheckers;
 
 public class DenoUpdateChecker : IUpdateChecker {
+    private readonly IProcessExecutor _processExecutor;
     private readonly HttpClient _httpClient;
     private readonly ILogger<DenoUpdateChecker> _logger;
 
     public string ToolName => "Deno";
     public string ExecutableName => "deno.exe";
 
-    public DenoUpdateChecker(HttpClient httpClient, ILogger<DenoUpdateChecker> logger) {
+    public DenoUpdateChecker(IProcessExecutor processExecutor, HttpClient httpClient, ILogger<DenoUpdateChecker> logger) {
+        _processExecutor = processExecutor;
         _httpClient = httpClient;
         _logger = logger;
 
@@ -30,23 +32,13 @@ public class DenoUpdateChecker : IUpdateChecker {
             return null;
 
         try {
-            var processInfo = new ProcessStartInfo {
-                FileName = exePath,
-                Arguments = "--version",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(processInfo);
-            if (process == null)
+            var result = await _processExecutor.ExecuteAsync(exePath, "--version");
+            if (result.ExitCode != 0)
                 return null;
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
-
+            var output = result.StandardOutput.Trim();
             var match = Regex.Match(output, @"deno\s+(\S+)");
-            return match.Success ? match.Groups[1].Value : output.Trim();
+            return match.Success ? match.Groups[1].Value : output;
         } catch (Exception ex) {
             _logger.LogError(ex, "Failed to get {Tool} version", ToolName);
             return null;
@@ -56,18 +48,12 @@ public class DenoUpdateChecker : IUpdateChecker {
     public async Task<string?> GetLatestVersionAsync() {
         try {
             var response = await _httpClient.GetAsync("https://api.github.com/repos/denoland/deno/releases/latest");
-
-            if (!response.IsSuccessStatusCode) {
-                _logger.LogWarning("GitHub API returned {StatusCode} for Deno", response.StatusCode);
+            if (!response.IsSuccessStatusCode)
                 return null;
-            }
 
             var json = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(json);
-            var tagName = doc.RootElement.GetProperty("tag_name").GetString();
-
-            _logger.LogInformation("Latest Deno version: {Version}", tagName);
-            return tagName?.TrimStart('v');
+            return doc.RootElement.GetProperty("tag_name").GetString()?.TrimStart('v');
         } catch (HttpRequestException ex) {
             _logger.LogWarning(ex, "Network error while checking Deno version");
             return null;
