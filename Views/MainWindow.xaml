@@ -6,83 +6,79 @@
         WindowStartupLocation="CenterScreen">
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Меню -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="_Файл">
+                <MenuItem Header="Выход" Command="{Binding ExitCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Сервис">
+                <MenuItem Header="Проверить обновления" Command="{Binding CheckUpdatesCommand}"/>
+                <Separator/>
+                <MenuItem Header="Очистить завершённые" Command="{Binding ClearCompletedCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Помощь">
+                <MenuItem Header="Логи" Command="{Binding OpenLogsCommand}"/>
+                <Separator/>
+                <MenuItem Header="О программе" Command="{Binding AboutCommand}"/>
+            </MenuItem>
+        </Menu>
+
         <!-- Основное содержимое -->
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <TextBlock Grid.Row="1" Text="Ссылка YouTube:" FontWeight="Bold" Margin="10,10,0,5"/>
+        <TextBox x:Name="UrlTextBox" Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}" 
+                 Grid.Row="2" Margin="10,0,10,10" Height="30"/>
 
-            <!-- Спиннер -->
-            <Grid Grid.RowSpan="8" Background="#80FFFFFF" Visibility="{Binding IsSpinnerVisible, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <ProgressBar Width="50" Height="50" IsIndeterminate="True" />
-                    <TextBlock Text="{Binding SpinnerText}" Margin="0,10,0,0" HorizontalAlignment="Center" FontSize="14"/>
-                </StackPanel>
-            </Grid>
+        <WrapPanel Grid.Row="3" Margin="10,0,0,10">
+            <Button Content="Загрузить информацию" Width="150" Height="30" 
+                    Command="{Binding LoadCommand}" Margin="0,0,10,0"/>
+            <Button Content="Добавить в очередь" Width="130" Height="30" 
+                    Command="{Binding AddToQueueCommand}" Margin="0,0,10,0"/>
+        </WrapPanel>
 
-            <TextBlock Grid.Row="0" Text="Ссылка YouTube:" FontWeight="Bold" Margin="10,10,0,5"/>
-            <TextBox x:Name="UrlTextBox" Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}" 
-             Grid.Row="1" Margin="10,0,10,10" Height="30"/>
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="10,0,0,10">
+            <RadioButton Content="Видео" IsChecked="{Binding IsVideoMode}" Margin="0,0,15,0"/>
+            <RadioButton Content="Аудио (MP3)" IsChecked="{Binding IsAudioMode}"/>
+        </StackPanel>
 
-            <WrapPanel Grid.Row="2" Margin="10,0,0,10">
-                <Button Content="Загрузить информацию" Width="150" Height="30" 
-                Command="{Binding LoadCommand}" Margin="0,0,10,0"/>
-                <Button Content="Логи" Width="80" Height="30" 
-                Command="{Binding OpenLogsCommand}" Margin="0,0,10,0"/>
-                <Button Content="Открыть папку" Width="110" Height="30" 
-                Command="{Binding OpenFolderCommand}" Margin="0,0,10,0"/>
-                <Button Content="Проверить обновления" Width="150" Height="30" 
-                Command="{Binding CheckUpdatesCommand}"/>
-            </WrapPanel>
+        <ListBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
+                 DisplayMemberPath="DisplayName" Grid.Row="5" Height="150" Margin="10,0,10,10"/>
 
-            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="10,0,0,10">
-                <RadioButton Content="Видео" IsChecked="{Binding IsVideoMode}" Margin="0,0,15,0"/>
-                <RadioButton Content="Аудио (MP3)" IsChecked="{Binding IsAudioMode}"/>
-            </StackPanel>
+        <!-- Активные задачи -->
+        <GroupBox Header="Активные задачи" Grid.Row="6" Margin="10,0,10,10">
+            <ScrollViewer MaxHeight="200">
+                <ItemsControl ItemsSource="{Binding ActiveTasks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <local:ProgressTaskControl Task="{Binding}" 
+                                CancelCommand="{Binding DataContext.CancelTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </GroupBox>
 
-            <ListBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
-             DisplayMemberPath="DisplayName" Grid.Row="4" Height="150" Margin="10,0,10,10"/>
+        <StackPanel Grid.Row="7" Orientation="Horizontal" Margin="10,10,10,10">
+            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Width="350" Margin="0,0,15,0"/>
+            <Button Content="Открыть папку" Width="110" Height="30" 
+                    Command="{Binding OpenFolderCommand}" Margin="0,0,10,0"/>
+            <Button Content="Скачать" Width="100" Height="30" 
+                    Command="{Binding DownloadCommand}" Visibility="Collapsed"/>
+        </StackPanel>
 
-            <!-- Активные задачи -->
-            <GroupBox Grid.Row="5" Margin="10,0,10,10">
-                <GroupBox.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Активные задачи" VerticalAlignment="Center" FontWeight="Bold"/>
-                        <Button Content="Очистить завершённые" Width="150" Height="25" 
-                    Margin="15,0,0,0" 
-                    Command="{Binding ClearCompletedCommand}"
-                    Padding="5,0"/>
-                    </StackPanel>
-                </GroupBox.Header>
-                <ScrollViewer MaxHeight="200">
-                    <ItemsControl ItemsSource="{Binding ActiveTasks}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <local:ProgressTaskControl Task="{Binding}" 
-                        CancelCommand="{Binding DataContext.CancelTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </GroupBox>
-
-            <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="10,10,10,10">
-                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Width="350" Margin="0,0,15,0"/>
-                <Button Content="Добавить в очередь" Width="130" Height="30" 
-                Command="{Binding AddToQueueCommand}" Margin="0,0,10,0"/>
-                <Button Content="Скачать" Width="100" Height="30" 
-                Command="{Binding DownloadCommand}" Visibility="Collapsed"/>
-            </StackPanel>
-        </Grid>
-        <!-- Overlay поверх всего (последний элемент = самый верхний) -->
-        <Grid Background="#CC000000" 
+        <!-- Overlay (спиннер) -->
+        <Grid Grid.RowSpan="9" Background="#CC000000" 
               Visibility="{Binding IsSpinnerVisible, Converter={StaticResource BoolToVisibility}}"
               IsHitTestVisible="{Binding IsSpinnerVisible}">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -91,5 +87,5 @@
                            HorizontalAlignment="Center" FontSize="16" Foreground="White"/>
             </StackPanel>
         </Grid>
-    </Grid>    
+    </Grid>
 </Window>

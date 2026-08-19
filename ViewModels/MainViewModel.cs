@@ -53,6 +53,8 @@ public class MainViewModel : ViewModelBase {
         OpenFolderCommand = new RelayCommand(OpenFolder, () => !string.IsNullOrEmpty(_lastDownloadedPath));
         CheckUpdatesCommand = new RelayCommand(CheckUpdatesAsync, () => !IsLoading);
         ClearCompletedCommand = new RelayCommand(ClearCompleted, () => ActiveTasks.Any(t => !t.IsActive));
+        ExitCommand = new RelayCommand(Exit);
+        AboutCommand = new RelayCommand(About);
         _taskFactory = taskFactory;
     }    
 
@@ -112,6 +114,8 @@ public class MainViewModel : ViewModelBase {
     public ICommand OpenFolderCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
     public ICommand ClearCompletedCommand { get; }
+    public ICommand ExitCommand { get; }
+    public ICommand AboutCommand { get; }
 
     private async void LoadInfo() {
         if (string.IsNullOrEmpty(Url))
@@ -346,5 +350,17 @@ public class MainViewModel : ViewModelBase {
             Formats.Add(format);
 
         SelectedFormat = Formats.FirstOrDefault();
+    }
+
+    private void Exit() {
+        Application.Current.Shutdown();
+    }
+
+    private void About() {
+        MessageBox.Show(
+            $"YouTube Downloader\n\nВерсия: 1.0\n\nИспользует:\n- yt-dlp (nightly)\n- FFmpeg\n- Deno\n\n© 2026",
+            "О программе",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
     }
 }
