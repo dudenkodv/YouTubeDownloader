@@ -20,6 +20,7 @@ public class SimpleDownloadStrategy : BaseDownloadStrategy {
             .Verbose()
             .ImpersonateChrome()
             .AllowU()
+            //.ExtractorArgs("youtube:player_client=android")
             .Format(downloadType == DownloadTypeEnum.Audio ? "bestaudio" : "bestvideo+bestaudio")
             .Output(outputTemplate)
             .NoWarnings()

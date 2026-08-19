@@ -32,6 +32,7 @@ public class DenoUpdateChecker : BaseUpdateChecker {
                 return null;
 
             var output = result.StandardOutput.Trim();
+            LogCurrentVersion(output);
             var match = Regex.Match(output, @"deno\s+(\S+)");
             return match.Success ? match.Groups[1].Value : output;
         } catch (Exception ex) {

@@ -15,7 +15,10 @@ public class CommandBuilder {
     public CommandBuilder Output(string outputTemplate) => Add($"-o \"{outputTemplate}\"");
     public CommandBuilder ImpersonateChrome() => Add("--impersonate chrome");
     public CommandBuilder AllowU() => Add("--allow-u");
+    public CommandBuilder Cookies(string path) => Add($"--cookies \"{path}\"");
+    public CommandBuilder ExtractorArgs(string args) => Add($"--extractor-args \"{args}\"");
     public CommandBuilder Url(string url) { _url = url; return this; }
+
     private CommandBuilder Add(string arg) { _args.Add(arg); return this; }
 
     public string Build() {

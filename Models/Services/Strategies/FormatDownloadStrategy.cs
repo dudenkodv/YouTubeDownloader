@@ -19,6 +19,7 @@ public class FormatDownloadStrategy : BaseDownloadStrategy {
         return CommandBuilder.Create()
             .Verbose()
             .ImpersonateChrome()
+            //.ExtractorArgs("youtube:player_client=android")
             .Format(formatId)
             .Output(outputTemplate)
             .NoWarnings()

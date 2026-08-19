@@ -23,6 +23,7 @@ public class YtDlpUpdateChecker : BaseUpdateChecker {
 
         try {
             var result = await _processExecutor.ExecuteAsync(exePath, "--version");
+            LogCurrentVersion(result.StandardOutput);
             return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
         } catch (Exception ex) {
             _logger.LogError(ex, "Failed to get {Tool} version", ToolName);

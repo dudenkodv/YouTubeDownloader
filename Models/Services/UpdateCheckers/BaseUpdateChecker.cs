@@ -87,4 +87,8 @@ public abstract class BaseUpdateChecker : IUpdateChecker {
         if (File.Exists(tempFile))
             File.Delete(tempFile);
     }
+
+    protected void LogCurrentVersion(string version) {
+        _logger.LogInformation($"{ToolName} current version: {version}");
+    }
 }
