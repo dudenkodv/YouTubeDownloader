@@ -13,11 +13,10 @@ public class DenoUpdateChecker : BaseUpdateChecker {
     public override string ExecutableName => "deno.exe";
 
     public DenoUpdateChecker(
-        IProcessManager processManager,
         IProcessExecutor processExecutor,
         HttpClient httpClient,
         ILogger<DenoUpdateChecker> logger)
-        : base(processManager, processExecutor, httpClient, logger) {
+        : base(processExecutor, httpClient, logger) {
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "YouTubeDownloader/1.0");
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github.v3+json");

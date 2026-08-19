@@ -7,17 +7,14 @@ using YouTubeDownloader.Models.Interfaces;
 namespace YouTubeDownloader.Models.Services.UpdateCheckers;
 
 public abstract class BaseUpdateChecker : IUpdateChecker {
-    protected readonly IProcessManager _processManager;
     protected readonly IProcessExecutor _processExecutor;
     protected readonly HttpClient _httpClient;
     protected readonly ILogger _logger;
 
     protected BaseUpdateChecker(
-        IProcessManager processManager,
         IProcessExecutor processExecutor,
         HttpClient httpClient,
         ILogger logger) {
-        _processManager = processManager;
         _processExecutor = processExecutor;
         _httpClient = httpClient;
         _logger = logger;
@@ -31,17 +28,11 @@ public abstract class BaseUpdateChecker : IUpdateChecker {
 
     public virtual async Task<ResultDto<bool>> DownloadAndInstallAsync(string downloadUrl, string exePath, IProgress<int>? progress) {
         try {
-            await _processManager.KillProcessesAsync(Path.GetFileNameWithoutExtension(ExecutableName));
-            await _processManager.WaitForProcessExitAsync(Path.GetFileNameWithoutExtension(ExecutableName), TimeSpan.FromSeconds(2));
-
             var tempFile = await DownloadFileAsync(downloadUrl, progress);
             var extractedFile = await ExtractFileAsync(tempFile);
 
             if (string.IsNullOrEmpty(extractedFile))
                 return new ResultDto<bool>(false, $"{ToolName} executable not found", false);
-
-            await _processManager.KillProcessesAsync(Path.GetFileNameWithoutExtension(ExecutableName));
-            await Task.Delay(300);
 
             ReplaceFile(extractedFile, exePath);
             Cleanup(tempFile);

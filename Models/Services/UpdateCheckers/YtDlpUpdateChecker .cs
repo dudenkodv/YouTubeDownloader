@@ -11,11 +11,10 @@ public class YtDlpUpdateChecker : BaseUpdateChecker {
     public override string ExecutableName => "yt-dlp.exe";
 
     public YtDlpUpdateChecker(
-        IProcessManager processManager,
         IProcessExecutor processExecutor,
         HttpClient httpClient,
         ILogger<YtDlpUpdateChecker> logger)
-        : base(processManager, processExecutor, httpClient, logger) {
+        : base(processExecutor, httpClient, logger) {
     }
 
     public override async Task<string?> GetCurrentVersionAsync(string exePath) {
