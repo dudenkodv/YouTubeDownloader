@@ -30,20 +30,29 @@ public class MainViewModel : ViewModelBase {
     private readonly IProgressTaskFactory _taskFactory;
     private readonly IProcessManager _processManager;
     private readonly IUpdateService _updateService;
+    private readonly ZapretService _zapretService;
     private bool _isSpinnerVisible;
     private string _spinnerText = "Загрузка...";
     private int cancelCount = 0;
+    private readonly ISettingsService _settingsService;
+    private bool _isZapretEnabled;
+    private bool _isUpdatingZapret;
 
     public MainViewModel(IYouTubeService youtubeService,
         ILoggerFactory loggerFactory,
         IProgressTaskFactory taskFactory,
         IProcessManager processManager,
-        IUpdateService updateService) {
+        IUpdateService updateService,
+        ISettingsService settingsService,
+        ZapretService zapretService) {
         _youtubeService = youtubeService;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<MainViewModel>();
         _processManager = processManager;
         _updateService = updateService;
+        _settingsService = settingsService;
+        _isZapretEnabled = _settingsService.EnableZapret;
+        _zapretService = zapretService;
 
 
         LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
@@ -55,6 +64,7 @@ public class MainViewModel : ViewModelBase {
         ClearCompletedCommand = new RelayCommand(ClearCompleted, () => ActiveTasks.Any(t => !t.IsActive));
         ExitCommand = new RelayCommand(Exit);
         AboutCommand = new RelayCommand(About);
+        ToggleZapretCommand = new RelayCommand(ToggleZapret);
         _taskFactory = taskFactory;
     }    
 
@@ -107,6 +117,70 @@ public class MainViewModel : ViewModelBase {
         set { _spinnerText = value; OnPropertyChanged(); }
     }
 
+    public bool IsZapretEnabled {
+        get => _isZapretEnabled;
+        set {
+            if (_isUpdatingZapret)
+                return;
+            if (_isZapretEnabled == value)
+                return;
+
+            // Временно блокируем повторные вызовы
+            _isUpdatingZapret = true;
+
+            // Меняем состояние UI мгновенно (оптимистичное обновление)
+            _isZapretEnabled = value;
+            OnPropertyChanged();
+
+            _ = Task.Run(async () =>
+            {
+                try {
+                    bool success;
+                    string errorMessage = "";
+
+                    if (value) {
+                        var result = await _zapretService.StartAsync();
+                        success = result.isSuccess;
+                        errorMessage = result.message;
+                    } else {
+                        var result = _zapretService.Stop();
+                        success = result.isSuccess;
+                        errorMessage = result.message;
+                    }
+
+                    if (!success) {
+                        // Откатываем состояние галки
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            _isZapretEnabled = !value;
+                            OnPropertyChanged(nameof(IsZapretEnabled));
+
+                            // Сохраняем в настройках корректное состояние
+                            _settingsService.EnableZapret = !value;
+
+                            MessageBox.Show(
+                                $"Ошибка {(value ? "запуска" : "остановки")} Zapret:\n{errorMessage}",
+                                "Ошибка",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Error);
+                        });
+                    } else {
+                        // Успешно — сохраняем состояние в настройках
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            _settingsService.EnableZapret = value;
+                        });
+                    }
+                } finally {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        _isUpdatingZapret = false;
+                    });
+                }
+            });
+        }
+    }
+
     public ICommand LoadCommand { get; }
     public ICommand AddToQueueCommand { get; }
     public ICommand CancelTaskCommand { get; }
@@ -116,6 +190,11 @@ public class MainViewModel : ViewModelBase {
     public ICommand ClearCompletedCommand { get; }
     public ICommand ExitCommand { get; }
     public ICommand AboutCommand { get; }
+    public ICommand ToggleZapretCommand { get; }
+
+    private void ToggleZapret() {
+        IsZapretEnabled = !IsZapretEnabled;
+    }
 
     private async void LoadInfo() {
         if (string.IsNullOrEmpty(Url))

@@ -47,6 +47,7 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton<IYtDlpOutputParser, YtDlpOutputParser>();
         services.AddSingleton<ITempFileManagerFactory, TempFileManagerFactory>();
         services.AddSingleton<IFfmpegConverter, FfmpegConverter>();
+        services.AddSingleton<ISettingsService, SettingsService>();
 
         // Фабрика задач
         services.AddSingleton<IProgressTaskFactory, ProgressTaskFactory>();
@@ -78,6 +79,8 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton<IUpdateChecker, DenoUpdateChecker>();
         services.AddSingleton<IUpdateChecker, FfmpegUpdateChecker>();
         services.AddSingleton<IUpdateService, UpdateService>();
+
+        services.AddSingleton<ZapretService>();
 
         return services;
     }

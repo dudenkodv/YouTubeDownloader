@@ -27,6 +27,9 @@
                 <MenuItem Header="Проверить обновления" Command="{Binding CheckUpdatesCommand}"/>
                 <Separator/>
                 <MenuItem Header="Очистить завершённые" Command="{Binding ClearCompletedCommand}"/>
+                <Separator/>
+                <MenuItem Header="Zapret (обход блокировок)" IsCheckable="True" 
+              IsChecked="{Binding IsZapretEnabled}"/>
             </MenuItem>
             <MenuItem Header="_Помощь">
                 <MenuItem Header="Логи" Command="{Binding OpenLogsCommand}"/>
