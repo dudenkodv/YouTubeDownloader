@@ -43,9 +43,18 @@ public class ProcessExecutor : IProcessExecutor {
             .WithArguments(args)
             //.WithValidation(CommandResultValidation.None)
             .WithStandardOutputPipe(PipeTarget.ToDelegate(line => onStdOut?.Invoke(line)))
-            .WithStandardErrorPipe(PipeTarget.ToDelegate(line => onStdErr?.Invoke(line)));
+            .WithStandardErrorPipe(PipeTarget.ToDelegate(line => {
+                _logger.LogInformation("STDERR: {Line}", line);
+                onStdErr?.Invoke(line);
+            }));
 
-        await cmd.ExecuteAsync(_currentCts.Token);
+        try {
+            await cmd.ExecuteAsync(_currentCts.Token);
+            _logger.LogInformation("ExecuteStreamingAsync completed successfully");
+        } catch (Exception ex) {
+            _logger.LogError(ex, "ExecuteStreamingAsync failed");
+            throw;
+        }
     }
 
     public void Cancel() {
