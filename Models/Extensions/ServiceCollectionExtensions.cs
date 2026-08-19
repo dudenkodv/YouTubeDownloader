@@ -2,12 +2,14 @@
 using Microsoft.Extensions.Logging;
 using Serilog;
 using System.IO;
+using System.Net.Http;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Interfaces.Factories;
 using YouTubeDownloader.Models.ProgressTasks;
 using YouTubeDownloader.Models.Services;
 using YouTubeDownloader.Models.Services.Factories;
 using YouTubeDownloader.Models.Services.Strategies;
+using YouTubeDownloader.Models.Services.UpdateCheckers;
 using YouTubeDownloader.Models.Settings;
 using YouTubeDownloader.ViewModels;
 using YouTubeDownloader.Views;
@@ -71,7 +73,11 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton<IProcessManager, ProcessManager>();
 
         // UpdateService
-        services.AddTransient<IUpdateService, UpdateService>();
+        services.AddSingleton<HttpClient>();
+        services.AddSingleton<IUpdateChecker, YtDlpUpdateChecker>();
+        services.AddSingleton<IUpdateChecker, DenoUpdateChecker>();
+        services.AddSingleton<IUpdateChecker, FfmpegUpdateChecker>();
+        services.AddSingleton<IUpdateService, UpdateService>();
 
         return services;
     }

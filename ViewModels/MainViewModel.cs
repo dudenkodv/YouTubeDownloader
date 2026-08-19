@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using YouTubeDownloader.Models.Entities;
@@ -28,6 +29,7 @@ public class MainViewModel : ViewModelBase {
     private readonly ILogger<MainViewModel> _logger;
     private readonly IProgressTaskFactory _taskFactory;
     private readonly IProcessManager _processManager;
+    private readonly IUpdateService _updateService;
     private bool _isSpinnerVisible;
     private string _spinnerText = "Загрузка...";
     private int cancelCount = 0;
@@ -35,11 +37,13 @@ public class MainViewModel : ViewModelBase {
     public MainViewModel(IYouTubeService youtubeService,
         ILoggerFactory loggerFactory,
         IProgressTaskFactory taskFactory,
-        IProcessManager processManager) {
+        IProcessManager processManager,
+        IUpdateService updateService) {
         _youtubeService = youtubeService;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<MainViewModel>();
         _processManager = processManager;
+        _updateService = updateService;
 
 
         LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
@@ -270,37 +274,52 @@ public class MainViewModel : ViewModelBase {
     }
 
     private async Task CheckUpdatesAsync() {
-        using var updateService = new UpdateService(_loggerFactory.CreateLogger<UpdateService>(), _processManager);
         StatusText = "Проверка обновлений...";
 
         try {
-            var result = await updateService.CheckYtDlpUpdateAsync();
-            if (!result.isSuccess) {
-                MessageBox.Show($"Ошибка: {result.message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            var updates = new List<(string ToolName, UpdateInfo Info)>();
+
+            // Проверяем yt-dlp
+            var ytResult = await _updateService.CheckYtDlpUpdateAsync();
+            if (ytResult.isSuccess && ytResult.data.IsUpdateAvailable)
+                updates.Add(("yt-dlp", ytResult.data));
+
+            // Проверяем Deno
+            var denoResult = await _updateService.CheckDenoUpdateAsync();
+            if (denoResult.isSuccess && denoResult.data.IsUpdateAvailable)
+                updates.Add(("Deno", denoResult.data));
+
+            if (!updates.Any()) {
+                MessageBox.Show("Все инструменты обновлены до последних версий.", "Обновлений нет", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            var ytUpdate = result.data;
-            if (ytUpdate.IsUpdateAvailable) {
-                var dialogResult = MessageBox.Show(
-                    $"Доступно обновление yt-dlp!\n\nТекущая: {ytUpdate.CurrentVersion}\nНовая: {ytUpdate.LatestVersion}\n\nОбновить?",
-                    "Обновление",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (dialogResult == MessageBoxResult.Yes) {
-                    var progress = new Progress<int>(p => StatusText = $"Загрузка обновления: {p}%");
-                    var downloadResult = await updateService.DownloadAndUpdateToolAsync(ytUpdate, progress);
-
-                    if (downloadResult.isSuccess) {
-                        MessageBox.Show("Обновление установлено! Перезапустите приложение.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
-                    } else {
-                        MessageBox.Show($"Ошибка обновления: {downloadResult.message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                }
-            } else {
-                MessageBox.Show($"Установлена последняя версия yt-dlp ({ytUpdate.CurrentVersion})", "Обновлений нет", MessageBoxButton.OK, MessageBoxImage.Information);
+            var message = new StringBuilder("Доступны обновления:\n\n");
+            foreach (var (toolName, info) in updates) {
+                message.AppendLine($"{toolName}: {info.CurrentVersion} → {info.LatestVersion}");
             }
+
+            var dialogResult = MessageBox.Show(
+                message.ToString(),
+                "Обновления",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (dialogResult != MessageBoxResult.Yes)
+                return;
+
+            foreach (var (toolName, info) in updates) {
+                var progress = new Progress<int>(p => StatusText = $"Загрузка {toolName}: {p}%");
+                var result = await _updateService.DownloadAndUpdateToolAsync(info, progress);
+
+                if (result.isSuccess) {
+                    _logger.LogInformation("{Tool} обновлён до версии {Version}", toolName, info.LatestVersion);
+                } else {
+                    MessageBox.Show($"Ошибка обновления {toolName}: {result.message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+
+            MessageBox.Show("Все обновления установлены! Перезапустите приложение.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
         } catch (Exception ex) {
             _logger.LogError(ex, "Ошибка проверки обновлений");
             MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
