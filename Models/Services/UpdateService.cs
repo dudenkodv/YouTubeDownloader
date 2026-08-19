@@ -12,11 +12,13 @@ using YouTubeDownloader.Models.Interfaces;
 namespace YouTubeDownloader.Models.Services;
 
 public class UpdateService : IUpdateService {
-    private readonly string _toolsDir;
+    private readonly IProcessManager _processManager;
     private readonly HttpClient _httpClient;
     private readonly ILogger<UpdateService> _logger;
+    private readonly string _toolsDir;
 
-    public UpdateService(ILogger<UpdateService> logger) {
+    public UpdateService(ILogger<UpdateService> logger, IProcessManager processManager) {
+        _processManager = processManager;
         _toolsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools");
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "YouTubeDownloader/1.0");
@@ -87,60 +89,27 @@ public class UpdateService : IUpdateService {
     }
 
     public async Task<ResultDto<bool>> DownloadAndUpdateToolAsync(UpdateInfo updateInfo, IProgress<int>? progress = null) {
-        if (string.IsNullOrEmpty(updateInfo.DownloadUrl)) {
-            return new ResultDto<bool>(false, "URL для скачивания не найден", false);
-        }
+        if (string.IsNullOrEmpty(updateInfo.DownloadUrl))
+            return new ResultDto<bool>(false, "Download URL not found", false);
 
         var tempFile = Path.GetTempFileName();
         var toolPath = Path.Combine(_toolsDir, "yt-dlp.exe");
         var backupPath = toolPath + ".backup";
 
         try {
-            progress?.Report(0);
+            await _processManager.KillProcessesAsync("yt-dlp");
+            await _processManager.WaitForProcessExitAsync("yt-dlp", TimeSpan.FromSeconds(2));
 
-            using var response = await _httpClient.GetAsync(updateInfo.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
+            await DownloadFileAsync(updateInfo.DownloadUrl, tempFile, progress);
+            ReplaceToolFile(tempFile, toolPath, backupPath);
 
-            var totalBytes = response.Content.Headers.ContentLength ?? -1;
-            var downloadedBytes = 0L;
-
-            await using var contentStream = await response.Content.ReadAsStreamAsync();
-            await using var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-
-            var buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0) {
-                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
-                downloadedBytes += bytesRead;
-
-                if (totalBytes > 0)
-                    progress?.Report((int)((double)downloadedBytes / totalBytes * 100));
-            }
-
-            progress?.Report(100);
-
-            if (File.Exists(backupPath))
-                File.Delete(backupPath);
-
-            if (File.Exists(toolPath))
-                File.Move(toolPath, backupPath);
-
-            File.Move(tempFile, toolPath);
-
-            return new ResultDto<bool>(true, "Обновление установлено", true);
+            return new ResultDto<bool>(true, "Update installed successfully", true);
         } catch (Exception ex) {
-            _logger.LogError(ex, "DownloadAndUpdateToolAsync error");
-
-            if (File.Exists(backupPath) && !File.Exists(toolPath))
-                File.Move(backupPath, toolPath);
-
+            _logger.LogError(ex, "Update failed");
+            RestoreBackup(toolPath, backupPath);
             return new ResultDto<bool>(false, ex.Message, false);
         } finally {
-            if (File.Exists(tempFile))
-                File.Delete(tempFile);
-
-            if (File.Exists(backupPath))
-                File.Delete(backupPath);
+            CleanupFiles(tempFile, backupPath);
         }
     }
 
@@ -210,6 +179,46 @@ public class UpdateService : IUpdateService {
         } catch (Exception ex) {
             _logger.LogError(ex, "GetLatestYtDlpReleaseAsync error");
             return null;
+        }
+    }
+
+    private async Task DownloadFileAsync(string url, string destination, IProgress<int>? progress) {
+        using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+
+        var total = response.Content.Headers.ContentLength ?? -1;
+        var downloaded = 0L;
+
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        await using var file = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None);
+
+        var buffer = new byte[8192];
+        int read;
+        while ((read = await stream.ReadAsync(buffer)) > 0) {
+            await file.WriteAsync(buffer.AsMemory(0, read));
+            downloaded += read;
+            progress?.Report(total > 0 ? (int)(downloaded * 100 / total) : 0);
+        }
+    }
+
+    private void ReplaceToolFile(string tempFile, string toolPath, string backupPath) {
+        if (File.Exists(backupPath))
+            File.Delete(backupPath);
+
+        if (File.Exists(toolPath))
+            File.Move(toolPath, backupPath);
+
+        File.Move(tempFile, toolPath);
+    }
+
+    private void RestoreBackup(string toolPath, string backupPath) {
+        if (File.Exists(backupPath) && !File.Exists(toolPath))
+            File.Move(backupPath, toolPath);
+    }
+
+    private void CleanupFiles(params string[] paths) {
+        foreach (var path in paths.Where(File.Exists)) {
+            try { File.Delete(path); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete {Path}", path); }
         }
     }
 }

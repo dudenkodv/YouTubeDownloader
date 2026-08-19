@@ -67,6 +67,12 @@ public static class ServiceCollectionExtensions {
         // Views
         services.AddTransient<MainWindow>();
 
+        // ProcessManager (новый сервис)
+        services.AddSingleton<IProcessManager, ProcessManager>();
+
+        // UpdateService
+        services.AddTransient<IUpdateService, UpdateService>();
+
         return services;
     }
 }

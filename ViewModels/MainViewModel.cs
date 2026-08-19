@@ -26,16 +26,20 @@ public class MainViewModel : ViewModelBase {
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<MainViewModel> _logger;
     private readonly IProgressTaskFactory _taskFactory;
+    private readonly IProcessManager _processManager;
     private bool _isSpinnerVisible;
     private string _spinnerText = "Загрузка...";
     private int cancelCount = 0;
 
     public MainViewModel(IYouTubeService youtubeService,
         ILoggerFactory loggerFactory,
-        IProgressTaskFactory taskFactory) {
+        IProgressTaskFactory taskFactory,
+        IProcessManager processManager) {
         _youtubeService = youtubeService;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<MainViewModel>();
+        _processManager = processManager;
+
 
         LoadCommand = new RelayCommand(LoadInfo, () => !IsLoading);
         AddToQueueCommand = new RelayCommand(AddToQueue, () => SelectedFormat != null && !IsLoading);
@@ -259,7 +263,7 @@ public class MainViewModel : ViewModelBase {
     }
 
     private async Task CheckUpdatesAsync() {
-        using var updateService = new UpdateService(_loggerFactory.CreateLogger<UpdateService>());
+        using var updateService = new UpdateService(_loggerFactory.CreateLogger<UpdateService>(), _processManager);
         StatusText = "Проверка обновлений...";
 
         try {
