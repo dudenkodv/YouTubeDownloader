@@ -41,6 +41,7 @@ public class ProcessExecutor : IProcessExecutor {
 
         var cmd = Cli.Wrap(executable)
             .WithArguments(args)
+            //.WithValidation(CommandResultValidation.None)
             .WithStandardOutputPipe(PipeTarget.ToDelegate(line => onStdOut?.Invoke(line)))
             .WithStandardErrorPipe(PipeTarget.ToDelegate(line => onStdErr?.Invoke(line)));
 

@@ -111,6 +111,12 @@ public class YouTubeService : IYouTubeService {
                 .OrderBy(i => i.DisplayName)
                 .ToList();
 
+            _logger.LogInformation("GetFormatsAsync: video={Video}, audio={Audio}, combined={Combined}, full={Full}", videoFormats.Count, audioFormats.Count, combinedFormats.Count, fullFormats.Count);
+
+            foreach (var f in audioFormats) {
+                _logger.LogInformation("  Аудио формат: Id={Id}, Tbr={Tbr}, DisplayName={DisplayName}", f.FormatId, f.Tbr, f.DisplayName);
+            }
+
             progress?.Report($"Готово: {_currentTitle}");
             return new ResultDto<List<VideoFormat>>(true, "Успешно", finalFormats);
         } catch (OperationCanceledException) {
@@ -128,6 +134,7 @@ public class YouTubeService : IYouTubeService {
         IProgress<string>? status = null,
         CancellationToken cancellationToken = default) {
         _logger.LogInformation("YouTubeService DownloadAsync получил cancellationToken с HashCode: {HashCode}", cancellationToken.GetHashCode());
+        _logger.LogInformation("DownloadAsync: formatId={FormatId}, isVideoMode={IsVideoMode}, fileName={FileName}", formatId, isVideoMode, fileName);
         using var tempManager = _tempFileManagerFactory.Create();
         try {
             var outputTemplate = tempManager.GetOutputTemplate(fileName);
@@ -135,8 +142,9 @@ public class YouTubeService : IYouTubeService {
             var downloadType = (DownloadTypeEnum)(Convert.ToInt32(isVideoMode));
             var downloadedFile = await _formatStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken, downloadType);
             if (string.IsNullOrEmpty(downloadedFile)) {
-                _logger.LogInformation(" _simpleStrategy.ExecuteAsync start");
-                downloadedFile = await _simpleStrategy.ExecuteAsync(_ytDlpPath, url, formatId, outputTemplate, progress, status, cancellationToken, downloadType);
+                _logger.LogInformation("_simpleStrategy.ExecuteAsync start (без формата)");
+                // передаём null или пустую строку вместо formatId
+                downloadedFile = await _simpleStrategy.ExecuteAsync(_ytDlpPath, url, null, outputTemplate, progress, status, cancellationToken, downloadType);
             }
             if (string.IsNullOrEmpty(downloadedFile) || !File.Exists(downloadedFile)) {
                 return new ResultDto<bool>(false, "Файл не найден после загрузки", false);

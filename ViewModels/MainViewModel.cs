@@ -14,7 +14,8 @@ namespace YouTubeDownloader.ViewModels;
 
 public class MainViewModel : ViewModelBase {
     private readonly IYouTubeService _youtubeService;
-    private string _url = "https://www.youtube.com/watch?v=YWRw_fTrh9s";
+    //private string _url = "https://www.youtube.com/watch?v=YWRw_fTrh9s";
+    private string _url = "https://www.youtube.com/watch?v=Z02SkRSvmFc";
     private ObservableCollection<VideoFormat> _formats = new();
     private VideoFormat? _selectedFormat;
     private bool _isVideoMode = true;
@@ -120,6 +121,8 @@ public class MainViewModel : ViewModelBase {
             Url = Url,
             OnFormatsLoaded = (formats) =>
             {
+                _logger.LogInformation("LoadInfo: получено {Count} форматов", formats.Count);
+                _logger.LogInformation("  Видео: {Video}, Аудио: {Audio}", formats.Count(f => !f.IsAudioOnly), formats.Count(f => f.IsAudioOnly));
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     Formats.Clear();
@@ -142,6 +145,8 @@ public class MainViewModel : ViewModelBase {
 
         var videoTitle = _youtubeService.GetVideoTitle() ?? "video";
         var fileName = $"{videoTitle}_{SelectedFormat.DisplayName}";
+
+        _logger.LogInformation("AddToQueue: выбран формат Id={Id}, DisplayName={DisplayName}, IsAudioOnly={IsAudioOnly}", SelectedFormat.FormatId, SelectedFormat.DisplayName, SelectedFormat.IsAudioOnly);
 
         var saveDialog = new Microsoft.Win32.SaveFileDialog {
             Title = "Сохранить как",

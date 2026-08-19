@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using YouTubeDownloader.Models.Entities;
 using YouTubeDownloader.Models.Interfaces;
 using YouTubeDownloader.Models.Services.Arguments;
 
@@ -14,9 +15,10 @@ public class FormatDownloadStrategy : BaseDownloadStrategy {
         ILogger<FormatDownloadStrategy> logger) : base(executor, parser, logger) {
     }
 
-    protected override string BuildArgs(string url, string formatId, string outputTemplate) {
+    protected override string BuildArgs(string url, string formatId, string outputTemplate, DownloadTypeEnum downloadType) {
         return CommandBuilder.Create()
             .Verbose()
+            .ImpersonateChrome()
             .Format(formatId)
             .Output(outputTemplate)
             .NoWarnings()

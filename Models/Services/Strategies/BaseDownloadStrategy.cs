@@ -27,22 +27,25 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
     /// <summary>
     /// Формирует аргументы командной строки для yt-dlp
     /// </summary>
-    protected abstract string BuildArgs(string url, string formatId, string outputTemplate);
+    protected abstract string BuildArgs(string url, string formatId, string outputTemplate, DownloadTypeEnum downloadType);
 
     public async Task<string?> ExecuteAsync(string executable, string url, string formatId, string outputTemplate,
-    IProgress<double>? progress, IProgress<string>? status,
-    CancellationToken cancellationToken, DownloadTypeEnum downloadType) {
+        IProgress<double>? progress, IProgress<string>? status,
+        CancellationToken cancellationToken, DownloadTypeEnum downloadType) {
         try {
-            var args = BuildArgs(url, formatId, outputTemplate);
+            var args = BuildArgs(url, formatId, outputTemplate, downloadType);
+            _logger.LogInformation("BuildArgs = {Args}", args);
 
             status?.Report($"{downloadType.GetDescription()} {GetStatusMessage()}");
 
             string? downloadedFile = null;
             var lastPercent = 0;
             var tempDir = Path.GetDirectoryName(outputTemplate);
+            _logger.LogInformation("tempDir = {TempDir}", tempDir);
 
             await _executor.ExecuteStreamingAsync(executable, args,
                 onStdOut: line => {
+                    _logger.LogInformation("STDOUT: {Line}", line);
                     var percent = _parser.ParsePercent(line);
                     if (percent.HasValue && (int)percent.Value != lastPercent) {
                         lastPercent = (int)percent.Value;
@@ -50,6 +53,7 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
                     }
                 },
                 onStdErr: line => {
+                    _logger.LogInformation("STDERR: {Line}", line);
                     var percent = _parser.ParsePercent(line);
                     if (percent.HasValue && (int)percent.Value != lastPercent) {
                         lastPercent = (int)percent.Value;
@@ -58,7 +62,6 @@ public abstract class BaseDownloadStrategy : IDownloadStrategy {
                 },
                 cancellationToken: cancellationToken);
 
-            // После завершения просто берём первый файл из временной папки
             if (tempDir != null && Directory.Exists(tempDir)) {
                 var files = Directory.GetFiles(tempDir);
                 downloadedFile = files.FirstOrDefault();

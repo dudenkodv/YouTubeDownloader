@@ -13,8 +13,9 @@ public class CommandBuilder {
     public CommandBuilder Json() => Add("-J");
     public CommandBuilder Format(string formatId) => Add($"-f {formatId}");
     public CommandBuilder Output(string outputTemplate) => Add($"-o \"{outputTemplate}\"");
+    public CommandBuilder ImpersonateChrome() => Add("--impersonate chrome");
+    public CommandBuilder AllowU() => Add("--allow-u");
     public CommandBuilder Url(string url) { _url = url; return this; }
-
     private CommandBuilder Add(string arg) { _args.Add(arg); return this; }
 
     public string Build() {
